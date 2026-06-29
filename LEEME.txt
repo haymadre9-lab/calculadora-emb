@@ -1,0 +1,6 @@
+PWA Calculadora EMB
+
+Sube TODO el contenido de esta carpeta a un repo de GitHub Pages (p.ej. calculadora-emb).
+Quedará en https://haymadre9-lab.github.io/calculadora-emb/
+En el movil: abrir esa URL en Chrome -> menu -> Anadir a pantalla de inicio.
+Para actualizar: re-sube index.html (y sube el numero de version en sw.js si quieres forzar refresco).

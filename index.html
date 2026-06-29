@@ -1,0 +1,406 @@
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#C62828"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/><title>Calculadora EMB 2026</title>
+<style>
+:root{--emb:#C62828;--emb-dark:#8E1F1F;--emb-soft:#FBEAEA;--bg:#F4F2EE;--surface:#FFFFFF;--line:#E3E0D8;--ink:#26241F;--muted:#6E6A62;--hint:#9A958B;--noct:#3949AB;--noct-soft:#E8EAF6;--dieta:#2E7D32;--dieta-soft:#E7F1E3;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}html,body{margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.4;padding-bottom:env(safe-area-inset-bottom);}
+header{background:var(--emb);color:#fff;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));position:sticky;top:0;z-index:30;}
+header h1{font-size:17px;font-weight:700;margin:0;}
+.periodbar{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.periodbar button{width:34px;height:32px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;}
+.periodbar .plabel{flex:1;text-align:center;font-size:14px;font-weight:700;}
+.periodbar .plabel small{display:block;font-size:11px;font-weight:600;opacity:.85;}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
+.tabs button{flex:1;border:0;background:none;padding:12px 4px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;}
+.tabs button.on{color:var(--emb);border-bottom-color:var(--emb);}
+.wrap{padding:12px;max-width:560px;margin:0 auto;}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;}
+.bigrow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line);}
+.bigrow:last-child{border-bottom:0;}
+.bigrow .k{font-size:14px;color:var(--muted);}.bigrow .v{font-size:18px;font-weight:800;}
+.bigrow .v small{font-size:12px;font-weight:600;color:var(--muted);}
+.empty{text-align:center;color:var(--hint);padding:26px 10px;font-size:14px;}
+.item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+.item:last-child{border-bottom:0;}
+.item .d{width:42px;text-align:center;}.item .d b{font-size:16px;display:block;line-height:1;}
+.item .d small{font-size:10px;color:var(--muted);text-transform:uppercase;}
+.item .mid{flex:1;min-width:0;}.item .mid .t1{font-weight:700;font-size:14px;}.item .mid .t2{font-size:12px;color:var(--muted);}
+.item .r{text-align:right;font-size:12px;}.item .r b{font-size:15px;}
+.chip{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;}
+.chip.n{background:var(--noct-soft);color:var(--noct);}.chip.di{background:var(--dieta-soft);color:var(--dieta);}.chip.tn{background:var(--emb-soft);color:var(--emb-dark);}
+.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));background:var(--emb);color:#fff;border:0;border-radius:16px;padding:14px 18px;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(198,40,40,.4);cursor:pointer;z-index:25;}
+.sheet-bg{position:fixed;inset:0;background:rgba(20,18,16,.45);z-index:40;display:none;}.sheet-bg.show{display:block;}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .22s;max-height:93vh;overflow-y:auto;box-shadow:0 -8px 30px rgba(0,0,0,.18);max-width:560px;margin:0 auto;}
+.sheet.show{transform:translateY(0);}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px;}
+.sheet h2{font-size:17px;margin:0 0 12px;font-weight:700;}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;}.fields .full{grid-column:1/-1;}
+.field label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;}
+.field input,.field select{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:16px;background:var(--surface);color:var(--ink);font-family:inherit;}
+.blq{background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:8px;position:relative;}
+.blq .rm{position:absolute;top:8px;right:8px;border:0;background:none;color:var(--emb);font-size:18px;cursor:pointer;font-weight:700;}
+.blq .tramos{font-size:12px;color:var(--emb-dark);font-weight:700;margin-top:7px;}
+.seg{display:flex;gap:6px;margin:8px 0 2px;}
+.seg button{flex:1;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:8px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;}
+.seg button.on{background:var(--emb);color:#fff;border-color:var(--emb);}
+.seg button:disabled{opacity:.35;cursor:not-allowed;}
+.addbtn{width:100%;border:1px dashed var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;}
+.calcbox{background:var(--emb-soft);border-radius:10px;padding:11px 12px;margin:10px 0;display:flex;gap:18px;align-items:center;}
+.calcbox span{font-size:12px;color:var(--muted);}.calcbox b{font-size:18px;display:block;color:var(--emb-dark);}
+.calcbox .esp{margin-left:auto;font-size:11px;color:var(--muted);text-align:right;max-width:120px;}
+.diet{display:flex;gap:8px;margin:6px 0 2px;}
+.diet label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;}
+.diet input{width:18px;height:18px;}
+.actions{display:flex;gap:10px;margin-top:14px;}
+.btn{flex:1;border:0;border-radius:11px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;}
+.btn.primary{background:var(--emb);color:#fff;}.btn.ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink);}
+.btn.danger{background:transparent;color:var(--emb);border:1px solid var(--line);flex:0 0 auto;padding:13px 16px;}
+.toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:60;opacity:0;transition:.2s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0;}
+</style></head><body>
+<header><h1>Calculadora EMB</h1><div class="periodbar"><button id="pprev">&#8249;</button><div class="plabel" id="plabel"></div><button id="pnext">&#8250;</button></div></header>
+<div class="tabs"><button data-tab="resumen" class="on">Resumen</button><button data-tab="dias">Días</button><button data-tab="servicios">Servicios</button></div>
+<div class="wrap" id="view"></div><button class="fab" id="fab">+ Añadir día</button>
+<div class="sheet-bg" id="sheetbg"></div><div class="sheet" id="sheet"></div><div class="toast" id="toast"></div>
+<script>
+const CAT={"2312":{"Lab":{"12":{"p":0,"t1":["07:10","08:30"]},"21":{"p":0,"t1":["07:00","10:30"]},"22":{"p":0,"t1":["08:30","10:00"]},"31":{"p":0,"t1":["10:30","11:14"]},"32":{"p":0,"t1":["10:00","10:36"]},"51":{"p":0,"t1":["12:33","15:38"]},"52":{"p":0,"t2":["13:03","15:10"]},"61":{"p":0,"t1":["12:33","13:39"]},"62":{"p":0,"t2":["17:03","19:09"]},"71":{"p":0,"t2":["16:33","20:42"]},"221":{"p":0,"t1":["08:05","09:00"]},"222":{"p":0,"t1":["07:30","08:39"]}}},"2314":{"Lab":{"21":{"p":0,"t1":["08:00","09:10"]},"22":{"p":0,"t1":["07:15","10:00"]},"23":{"p":0,"t1":["07:15","10:30"]},"33":{"p":0,"t1":["09:00","11:10"]},"41":{"p":0,"t1":["07:57","09:14"]},"43":{"p":0,"t1":["07:24","08:45"]},"52":{"p":0,"t1":["12:33","14:02"]},"53":{"p":0,"t2":["15:00","20:58"]},"63":{"p":0,"t2":["14:33","15:45"]},"73":{"p":0,"t2":["17:33","19:02"]},"243":{"p":0,"t1":["07:27","08:45"]},"01":{"p":0,"t1":["09:10","14:00"],"t2":["14:00","21:25"]},"02":{"p":0,"t1":["10:00","13:30"],"t2":["13:30","20:28"]},"03":{"p":0,"t1":["10:30","15:00"]}},"Sab":{"51S":{"p":0,"t2":["15:15","19:24"]},"01S":{"p":0,"t1":["06:45","15:15"]}}},"2318":{"Lab":{"21":{"p":0,"t1":["06:30","10:00"]},"22":{"p":0,"t1":["06:50","09:40"]},"23":{"p":0,"t1":["07:45","09:50"]},"31":{"p":0,"t1":["08:45","09:29"]},"32":{"p":0,"t1":["07:15","08:30"]},"33":{"p":0,"t1":["09:50","13:50"]},"52":{"p":0,"t1":["12:43","14:51"]},"63":{"p":0,"t1":["12:23","13:31"]},"221":{"p":0,"t1":["07:30","08:45"]},"222":{"p":0,"t1":["08:30","09:14"]},"223":{"p":0,"t1":["07:45","08:59"]},"01":{"p":0,"t1":["10:00","14:00"],"t2":["14:00","20:58"]},"02":{"p":0,"t1":["09:40","14:40"],"t2":["14:40","21:37"]},"03":{"p":0,"t2":["13:50","21:18"]}}},"2321":{"Lab":{"21":{"p":0,"t1":["07:04","09:10"]},"22":{"p":0,"t1":["06:34","09:49"]},"31":{"p":0,"t1":["09:10","11:24"]},"52":{"p":0,"t2":["13:08","14:40"]},"61":{"p":0,"t1":["12:43","14:08"]},"62":{"p":0,"t2":["17:43","20:10"]},"71":{"p":0,"t2":["20:40","21:38"]},"72":{"p":0,"t2":["20:10","21:08"]},"82":{"p":0,"t2":["14:40","15:38"]},"221":{"p":0,"t1":["07:04","08:05"]},"222":{"p":0,"t1":["07:34","08:51"]},"01":{"p":0,"t1":["11:10","14:10"],"t2":["14:10","20:40"]}}},"2324":{"Lab":{"21":{"p":0,"t1":["07:05","09:36"]},"22":{"p":0,"t1":["07:30","08:46"]},"23":{"p":0,"t1":["07:55","09:11"]},"51":{"p":0,"t1":["12:38","14:43"]},"52":{"p":0,"t2":["13:38","14:52"]},"53":{"p":0,"t2":["15:45","20:03"]},"54":{"p":0,"t2":["18:13","20:32"]},"222":{"p":0,"t1":["07:30","08:47"]}}},"3115":{"Fest":{"21":{"p":0,"t1":["09:55","15:30"]},"22":{"p":0,"t1":["09:22","15:20"]},"23":{"p":0,"t1":["09:52","15:20"]},"24":{"p":0,"t1":["09:25","15:10"]},"01":{"p":0,"t2":["15:30","23:19"]},"02":{"p":0,"t2":["15:20","23:47"]},"03":{"p":0,"t2":["15:20","23:11"]},"04":{"p":0,"t2":["15:10","23:43"]}},"Lab":{"23":{"p":0,"t1":["06:02","07:15"]},"25":{"p":0,"t1":["05:35","08:00"]},"51":{"p":0,"t2":["14:00","16:00"]},"54":{"p":0,"t2":["14:10","16:10"]},"01":{"p":0,"t1":["05:22","14:00"],"t2":["16:00","23:40"]},"02":{"p":0,"t1":["05:42","14:20"],"t2":["14:20","23:02"]},"03":{"p":0,"t1":["06:55","14:40"],"t2":["14:40","23:22"]},"04":{"p":0,"t1":["05:15","14:10"],"t2":["16:10","23:46"]},"05":{"p":0,"t1":["07:35","14:30"],"t2":["14:30","23:02"]},"06":{"p":0,"t1":["05:55","14:50"],"t2":["14:50","23:19"]}},"Sab":{"51":{"p":0,"t1":["14:00","15:45"],"t2":["15:45","16:00"]},"54":{"p":0,"t1":["14:10","15:40"],"t2":["15:40","16:10"]},"01":{"p":0,"t1":["05:22","14:00"],"t2":["16:00","23:40"]},"02":{"p":0,"t1":["05:42","14:20"],"t2":["14:20","23:02"]},"03":{"p":0,"t1":["06:55","14:40"],"t2":["14:40","23:22"]},"04":{"p":0,"t1":["05:15","14:10"],"t2":["16:10","23:46"]},"05":{"p":0,"t1":["07:35","14:30"],"t2":["14:30","23:02"]},"06":{"p":0,"t1":["05:55","14:50"],"t2":["14:50","23:19"]}}},"3122":{"Fest":{"01":{"p":0,"t1":["07:25","15:10"],"t2":["15:10","23:34"]},"02":{"p":0,"t1":["07:20","15:00"],"t2":["15:00","23:38"]}},"Lab":{"01":{"p":0,"t1":["06:20","15:10"],"t2":["15:10","23:35"]},"02":{"p":0,"t1":["06:25","15:00"],"t2":["15:00","23:37"]}},"Sab":{"01":{"p":0,"t1":["06:20","15:10"],"t2":["15:10","23:35"]},"02":{"p":0,"t1":["06:25","15:00"],"t2":["15:00","23:37"]}}},"3129":{"Fest":{"24":{"p":0,"t1":["10:30","15:30"]},"01":{"p":0,"t1":["06:44","14:00"],"t2":["14:00","22:59"]},"02":{"p":0,"t1":["07:14","14:30"],"t2":["14:30","23:22"]},"03":{"p":0,"t1":["07:44","15:00"],"t2":["15:00","22:53"]},"04":{"p":0,"t2":["15:30","23:17"]}},"Lab":{"25":{"p":0,"t1":["06:30","06:55"]},"45":{"p":0,"t1":["06:02","06:30"]},"01":{"p":0,"t1":["06:14","14:30"],"t2":["14:30","23:09"]},"02":{"p":0,"t1":["06:29","14:45"],"t2":["14:45","22:39"]},"03":{"p":0,"t1":["06:44","15:00"],"t2":["15:00","22:49"]},"04":{"p":0,"t1":["06:59","15:15"],"t2":["15:15","23:05"]},"05":{"p":0,"t1":["06:55","14:30"],"t2":["14:30","23:17"]},"06":{"p":0,"t1":["06:34","14:45"],"t2":["14:45","22:43"]},"07":{"p":0,"t1":["06:44","14:00"],"t2":["14:00","21:58"]},"08":{"p":0,"t1":["06:59","15:15"],"t2":["15:15","22:57"]}},"Sab":{"45":{"p":0,"t1":["06:02","06:30"]},"01":{"p":0,"t1":["06:14","14:30"],"t2":["14:30","23:11"]},"02":{"p":0,"t1":["06:29","14:45"],"t2":["14:45","22:42"]},"03":{"p":0,"t1":["06:44","15:00"],"t2":["15:00","22:54"]},"04":{"p":0,"t1":["06:59","15:15"],"t2":["15:15","23:07"]},"05":{"p":0,"t1":["06:30","14:30"],"t2":["14:30","23:17"]},"06":{"p":0,"t1":["06:34","14:45"],"t2":["14:45","22:46"]},"07":{"p":0,"t1":["06:44","15:00"],"t2":["15:00","21:58"]},"08":{"p":0,"t1":["06:59","15:15"],"t2":["15:15","23:00"]}}},"3135":{"Fest":{"01":{"p":0,"t1":["09:40","15:40"],"t2":["15:40","22:53"]},"02":{"p":0,"t1":["07:46","15:20"],"t2":["15:20","22:35"]},"03":{"p":0,"t1":["07:24","15:00"],"t2":["15:00","21:35"]},"04":{"p":0,"t1":["07:06","14:35"],"t2":["14:35","20:35"]},"05":{"p":0,"t1":["07:26","15:00"],"t2":["15:00","23:28"]},"06":{"p":0,"t1":["08:40","15:20"],"t2":["15:20","23:08"]}},"Lab":{"01":{"p":0,"t1":["06:46","14:35"],"t2":["14:35","22:10"]},"02":{"p":0,"t1":["07:45","14:45"],"t2":["14:45","22:54"]},"03":{"p":0,"t1":["06:31","15:00"],"t2":["15:00","23:02"]},"04":{"p":0,"t1":["06:01","14:55"],"t2":["14:55","22:35"]},"05":{"p":0,"t1":["07:01","14:50"],"t2":["14:50","22:24"]},"06":{"p":0,"t1":["08:45","15:45"],"t2":["15:45","20:35"]},"07":{"p":0,"t1":["06:16","14:35"],"t2":["14:35","21:35"]}},"Sab":{"01":{"p":0,"t1":["06:46","14:35"],"t2":["14:35","22:10"]},"02":{"p":0,"t1":["07:45","14:45"],"t2":["14:45","22:54"]},"03":{"p":0,"t1":["06:31","15:00"],"t2":["15:00","23:02"]},"04":{"p":0,"t1":["06:01","14:55"],"t2":["14:55","22:35"]},"05":{"p":0,"t1":["07:01","14:50"],"t2":["14:50","22:24"]},"06":{"p":0,"t1":["08:45","15:45"],"t2":["15:45","20:35"]},"07":{"p":0,"t1":["06:16","14:35"],"t2":["14:35","21:35"]}}},"3136":{"Fest":{"21":{"p":0,"t1":["06:37","08:30"]},"22":{"p":0,"t1":["05:35","09:00"]},"23":{"p":0,"t1":["07:37","09:30"]},"25":{"p":0,"t1":["05:07","07:00"]},"26":{"p":0,"t1":["05:37","07:30"]},"27":{"p":0,"t1":["06:30","08:00"]},"47":{"p":0,"t1":["05:15","06:30"]},"56":{"p":0,"t1":["13:15","15:35"]},"81":{"p":0,"t2":["22:30","23:00"]},"82":{"p":0,"t2":["21:45","23:00"]},"83":{"p":0,"t2":["22:40","23:30"]},"84":{"p":0,"t2":["21:00","00:00"]},"85":{"p":0,"t2":["21:30","23:00"]},"86":{"p":0,"t2":["21:30","23:12"]},"92":{"p":0,"t2":["23:00","01:55"]},"91":{"p":0,"t2":["23:00","01:21"]},"93":{"p":0,"t2":["23:30","02:23"]},"94":{"p":0,"t2":["00:00","01:37"]},"95":{"p":0,"t2":["23:00","02:02"]},"97":{"p":0,"t2":["22:30","00:55"]},"87":{"p":0,"t2":["22:00","22:30"]},"01":{"p":0,"t1":["08:30","14:40"],"t2":["14:40","22:30"]},"02":{"p":0,"t1":["09:00","13:35"],"t2":["13:35","21:45"]},"03":{"p":0,"t1":["09:30","15:15"],"t2":["15:15","22:40"]},"04":{"p":0,"t1":["06:05","14:00"],"t2":["14:00","21:00"]},"05":{"p":0,"t1":["07:00","13:30"],"t2":["13:30","21:30"]},"06":{"p":0,"t1":["07:30","13:15"],"t2":["15:35","21:30"]},"07":{"p":0,"t1":["08:00","14:10"],"t2":["14:10","22:00"]}},"Lab":{"24":{"p":0,"t1":["04:37","06:30"]},"25":{"p":0,"t1":["05:07","07:00"]},"26":{"p":0,"t1":["06:00","07:30"]},"27":{"p":0,"t1":["06:07","08:00"]},"41":{"p":0,"t1":["05:15","06:45"]},"46":{"p":0,"t1":["04:45","06:00"]},"56":{"p":0,"t1":["13:15","14:30"],"t2":["14:30","15:35"]},"81":{"p":0,"t2":["22:30","23:00"]},"82":{"p":0,"t2":["21:45","23:00"]},"83":{"p":0,"t2":["22:40","23:30"]},"84":{"p":0,"t2":["21:00","00:00"]},"85":{"p":0,"t2":["21:30","23:00"]},"86":{"p":0,"t2":["21:30","23:12"]},"87":{"p":0,"t2":["22:00","22:30"]},"91":{"p":0,"t2":["23:00","01:21"]},"92":{"p":0,"t2":["23:00","01:55"]},"93":{"p":0,"t2":["23:30","02:23"]},"94":{"p":0,"t2":["00:00","01:37"]},"95":{"p":0,"t2":["23:00","02:02"]},"97":{"p":0,"t2":["22:30","00:55"]},"01":{"p":0,"t1":["06:45","14:15"],"t2":["14:15","22:30"]},"02":{"p":0,"t1":["05:05","13:35"],"t2":["13:35","21:45"]},"03":{"p":0,"t1":["05:35","14:05"],"t2":["14:05","22:40"]},"04":{"p":0,"t1":["06:30","13:30"],"t2":["13:30","21:00"]},"05":{"p":0,"t1":["07:00","13:30"],"t2":["13:30","21:30"]},"06":{"p":0,"t1":["07:30","13:15"],"t2":["15:35","21:30"]},"07":{"p":0,"t1":["08:00","14:10"],"t2":["14:10","22:00"]}},"Sab":{"24":{"p":0,"t1":["04:37","06:30"]},"25":{"p":0,"t1":["05:07","07:00"]},"26":{"p":0,"t1":["06:00","07:30"]},"27":{"p":0,"t1":["06:07","08:00"]},"41":{"p":0,"t1":["05:15","06:45"]},"46":{"p":0,"t1":["04:45","06:00"]},"56":{"p":0,"t1":["13:15","14:30"],"t2":["14:30","15:35"]},"81":{"p":0,"t2":["22:30","23:00"]},"82":{"p":0,"t2":["21:45","23:00"]},"83":{"p":0,"t2":["22:40","23:30"]},"84":{"p":0,"t2":["21:00","00:00"]},"85":{"p":0,"t2":["21:30","23:00"]},"86":{"p":0,"t2":["21:30","23:12"]},"87":{"p":0,"t2":["22:00","22:30"]},"91":{"p":0,"t2":["23:00","01:21"]},"92":{"p":0,"t2":["23:00","01:55"]},"93":{"p":0,"t2":["23:30","02:23"]},"94":{"p":0,"t2":["00:00","01:37"]},"95":{"p":0,"t2":["23:00","02:02"]},"97":{"p":0,"t2":["22:30","00:55"]},"01":{"p":0,"t1":["06:45","14:15"],"t2":["14:15","22:30"]},"02":{"p":0,"t1":["05:05","13:35"],"t2":["13:35","21:45"]},"03":{"p":0,"t1":["05:35","14:05"],"t2":["14:05","22:40"]},"04":{"p":0,"t1":["06:30","13:30"],"t2":["13:30","21:00"]},"05":{"p":0,"t1":["07:00","13:30"],"t2":["13:30","21:30"]},"06":{"p":0,"t1":["07:30","13:15"],"t2":["15:35","21:30"]},"07":{"p":0,"t1":["08:00","14:10"],"t2":["14:10","22:00"]}}},"3137":{"Lab":{"01":{"p":0,"t1":["06:35","15:15"],"t2":["15:15","22:40"]},"02":{"p":0,"t1":["06:25","14:15"],"t2":["14:15","22:36"]},"03":{"p":0,"t1":["06:55","15:00"],"t2":["15:00","23:39"]}},"Sab":{"01":{"p":0,"t1":["06:35","15:15"],"t2":["15:15","22:40"]},"02":{"p":0,"t1":["06:25","14:15"],"t2":["14:15","22:36"]},"03":{"p":0,"t1":["06:55","15:00"],"t2":["15:00","23:39"]}}},"3141":{"Fest":{"01":{"p":0,"t1":["06:55","15:10"],"t2":["15:10","22:58"]},"02":{"p":0,"t1":["06:57","15:30"],"t2":["15:30","23:42"]}},"Lab":{"01":{"p":0,"t1":["06:35","14:50"],"t2":["14:50","22:32"]},"02":{"p":0,"t1":["07:05","15:20"],"t2":["15:20","23:00"]},"03":{"p":0,"t1":["07:35","15:15"],"t2":["15:15","23:27"]},"04":{"p":0,"t1":["06:52","14:20"],"t2":["14:20","22:04"]}},"Sab":{"01":{"p":0,"t1":["06:35","14:50"],"t2":["14:50","22:32"]},"02":{"p":0,"t1":["07:05","15:20"],"t2":["15:20","23:00"]},"03":{"p":0,"t1":["07:35","15:15"],"t2":["15:15","23:27"]},"04":{"p":0,"t1":["06:52","14:20"],"t2":["14:20","22:04"]}}},"3144":{"Lab":{"52":{"p":0,"t1":["12:45","14:45"]},"01":{"p":0,"t1":["05:20","14:15"],"t2":["14:15","22:43"]},"02":{"p":0,"t1":["05:03","12:45"],"t2":["14:45","23:11"]},"03":{"p":0,"t1":["05:33","13:50"],"t2":["13:50","22:49"]},"04":{"p":0,"t1":["06:03","14:35"],"t2":["14:35","23:16"]}},"Sab":{"52":{"p":0,"t1":["12:45","14:45"]},"01":{"p":0,"t1":["05:20","14:15"],"t2":["14:15","22:43"]},"02":{"p":0,"t1":["05:03","12:45"],"t2":["14:45","23:11"]},"03":{"p":0,"t1":["05:33","13:50"],"t2":["13:50","22:49"]},"04":{"p":0,"t1":["06:03","14:35"],"t2":["14:35","23:16"]}}},"3151":{"Lab":{"21":{"p":0,"t1":["06:08","08:35"]},"22":{"p":0,"t1":["06:38","09:05"]},"23":{"p":0,"t1":["07:08","09:35"]},"01":{"p":0,"t1":["08:35","14:05"],"t2":["14:05","22:45"]},"02":{"p":0,"t1":["09:05","14:25"],"t2":["14:25","22:41"]},"03":{"p":0,"t1":["09:35","14:55"],"t2":["14:55","23:10"]}},"Sab":{"01":{"p":0,"t1":["06:08","14:05"],"t2":["14:05","22:45"]},"02":{"p":0,"t1":["06:38","14:25"],"t2":["14:25","22:41"]},"03":{"p":0,"t1":["07:08","14:55"],"t2":["14:55","23:10"]}}},"3321":{"Fest":{"81":{"p":0,"t2":["22:00","23:00"]},"01":{"p":0,"t1":["07:43","15:30"],"t2":["15:30","22:00"]},"02":{"p":0,"t1":["07:34","15:00"],"t2":["15:00","22:56"]}},"Lab":{"81":{"p":0,"t2":["22:00","23:00"]},"01":{"p":0,"t1":["05:38","14:20"],"t2":["14:20","22:00"]},"02":{"p":0,"t1":["05:34","14:30"],"t2":["14:30","22:56"]}},"Sab":{"81":{"p":0,"t2":["22:00","23:00"]},"01S":{"p":0,"t1":["07:43","15:30"],"t2":["15:30","22:00"]},"02S":{"p":0,"t1":["07:34","15:00"],"t2":["15:00","22:56"]}}},"3331":{"Fest":{"01S":{"p":0,"t1":["08:33","14:50"],"t2":["14:50","22:30"]}},"Lab":{"01":{"p":0,"t1":["06:33","14:25"],"t2":["14:25","22:30"]}},"Sab":{"01S":{"p":0,"t1":["08:33","14:50"],"t2":["14:50","22:30"]}}},"3332":{"Fest":{"01F":{"p":0,"t1":["08:06","15:25"],"t2":["15:25","23:29"]}},"Lab":{"22":{"p":0,"t1":["06:02","06:30"]},"81":{"p":0,"t2":["21:25","22:55"]},"01":{"p":0,"t1":["06:37","14:25"],"t2":["14:25","21:25"]},"02":{"p":0,"t1":["06:30","14:55"],"t2":["14:55","23:25"]},"03":{"p":0,"t1":["06:52","14:50"],"t2":["14:50","22:45"]}},"Sab":{"22":{"p":0,"t1":["06:02","06:30"]},"81":{"p":0,"t2":["21:25","22:55"]},"01":{"p":0,"t1":["06:37","14:25"],"t2":["14:25","21:25"]},"02":{"p":0,"t1":["06:30","14:55"],"t2":["14:55","23:25"]},"03":{"p":0,"t1":["06:52","14:50"],"t2":["14:50","22:45"]}}},"3333":{"Fest":{"21F":{"p":0,"t1":["11:00","15:20"],"t2":["15:20","21:30"]},"22F":{"p":0,"t1":["10:00","14:30"],"t2":["14:30","22:43"]},"23F":{"p":0,"t1":["09:40","13:30"]},"33F":{"p":0,"t1":["10:30","15:00"]},"53F":{"p":0,"t2":["16:30","21:00"]},"01F":{"p":0,"t1":["07:55","14:00"],"t2":["14:00","22:26"]},"02F":{"p":0,"t1":["08:11","15:20"],"t2":["15:20","22:00"]},"03F":{"p":0,"t2":["15:00","23:13"]}},"Sab":{"21":{"p":0,"t1":["08:30","14:30"],"t2":["14:30","22:00"]},"22":{"p":0,"t1":["08:00","15:00"],"t2":["15:00","21:00"]},"23":{"p":0,"t1":["09:30","14:00"],"t2":["14:00","22:29"]},"01":{"p":0,"t1":["06:10","14:30"],"t2":["14:30","22:53"]},"02":{"p":0,"t1":["06:40","15:00"],"t2":["15:00","23:23"]},"03":{"p":0,"t1":["07:10","14:00"],"t2":["14:00","21:30"]}},"Lab":{"21":{"p":0,"t1":["08:30","14:30"],"t2":["14:30","22:00"]},"22":{"p":0,"t1":["08:00","15:00"],"t2":["15:00","21:00"]},"23":{"p":0,"t1":["09:30","14:00"],"t2":["14:00","22:29"]},"01":{"p":0,"t1":["06:10","14:30"],"t2":["14:30","22:53"]},"02":{"p":0,"t1":["06:40","15:00"],"t2":["15:00","23:23"]},"03":{"p":0,"t1":["07:10","14:00"],"t2":["14:00","21:30"]}}},"3335":{"Fest":{"01":{"p":1,"t1":["07:21","09:40"],"t2":["13:35","21:40"]},"02":{"p":0,"t1":["10:35","16:35"],"t2":["16:35","23:38"]},"03":{"p":0,"t1":["09:35","15:35"],"t2":["15:35","23:31"]},"04":{"p":0,"t1":["08:35","14:35"],"t2":["14:35","22:43"]},"05":{"p":1,"t1":["11:35","13:40"],"t2":["17:35","19:40"]},"06":{"p":1,"t1":["07:14","08:40"],"t2":["12:35","20:40"]}},"Lab":{"84":{"p":0,"t2":["22:35","23:36"]},"01":{"p":1,"t1":["10:35","12:45"],"t2":["17:35","19:45"]},"02":{"p":1,"t1":["06:14","07:45"],"t2":["12:35","21:45"]},"03":{"p":1,"t1":["11:35","13:45"],"t2":["18:35","20:45"]},"04":{"p":1,"t1":["08:35","10:45"],"t2":["15:35","17:45"]},"05":{"p":1,"t1":["09:35","11:45"],"t2":["16:35","18:45"]},"06":{"p":0,"t1":["06:21","14:35"],"t2":["14:35","22:37"]},"07":{"p":0,"t1":["07:35","14:35"],"t2":["14:35","23:33"]}},"Sab":{"84":{"p":0,"t2":["22:35","23:36"]},"01":{"p":1,"t1":["10:35","12:45"],"t2":["17:35","19:45"]},"02":{"p":1,"t1":["12:35","14:45"],"t2":["19:35","21:45"]},"03":{"p":1,"t1":["11:35","13:45"],"t2":["18:35","20:45"]},"04":{"p":1,"t1":["08:35","10:45"],"t2":["15:35","17:45"]},"05":{"p":1,"t1":["09:35","11:45"],"t2":["16:35","18:45"]},"06":{"p":0,"t1":["07:14","14:35"],"t2":["14:35","22:40"]},"07":{"p":0,"t1":["07:35","14:35"],"t2":["14:35","23:33"]}}},"3336":{"Fest":{"21":{"p":0,"t1":["07:30","09:45"]},"23F":{"p":0,"t1":["08:56","14:15"]},"25":{"p":0,"t1":["06:30","08:45"]},"52F":{"p":0,"t2":["14:00","15:20"]},"56F":{"p":0,"t2":["14:50","18:15"]},"62":{"p":1,"t2":["15:20","21:05"]},"66":{"p":0,"t2":["18:15","22:52"]},"71":{"p":0,"t2":["21:45","23:38"]},"82":{"p":0,"t2":["21:05","22:45"]},"01F":{"p":0,"t1":["09:45","15:00"],"t2":["15:00","21:45"]},"02F":{"p":0,"t2":["16:15","19:15"]},"03F":{"p":0,"t2":["14:15","21:08"]},"04F":{"p":0,"t2":["15:24","21:41"]},"92":{"p":0,"t2":["22:45","00:07"]},"05":{"p":0,"t1":["08:45","15:15"],"t2":["15:15","23:39"]}},"Lab":{"21":{"p":0,"t1":["07:30","09:45"]},"24":{"p":0,"t1":["05:55","08:15"]},"25":{"p":0,"t1":["06:30","08:45"]},"26":{"p":0,"t1":["05:50","07:50"]},"31":{"p":0,"t1":["06:20","08:50"]},"31V":{"p":0,"t1":["06:20","08:15"]},"41R":{"p":0,"t1":["07:00","07:50"]},"52":{"p":0,"t2":["13:45","21:05"]},"56":{"p":0,"t2":["15:15","18:15"]},"62":{"p":0,"t2":["13:45","16:15"]},"71":{"p":0,"t2":["21:45","23:38"]},"72":{"p":0,"t2":["16:15","16:45"]},"82":{"p":0,"t2":["21:05","22:45"]},"92":{"p":0,"t2":["22:45","00:07"]},"01":{"p":0,"t1":["09:45","15:00"],"t2":["15:00","21:45"]},"02":{"p":1,"t1":["05:24","13:15"],"t2":["16:45","19:15"]},"03":{"p":0,"t1":["05:56","14:15"],"t2":["14:15","21:18"]},"04":{"p":0,"t1":["08:15","13:30"],"t2":["13:30","21:49"]},"05":{"p":0,"t1":["08:45","15:15"],"t2":["15:15","23:39"]},"06":{"p":0,"t1":["07:50","14:20"],"t2":["14:20","22:45"]}},"Sab":{"21":{"p":0,"t1":["07:30","09:45"]},"24":{"p":0,"t1":["05:55","08:15"]},"25":{"p":0,"t1":["06:30","08:45"]},"26S":{"p":0,"t1":["06:20","07:50"]},"52":{"p":0,"t2":["13:45","21:05"]},"56":{"p":0,"t2":["15:15","18:15"]},"62":{"p":0,"t2":["13:45","16:15"]},"71":{"p":0,"t2":["21:45","23:38"]},"72":{"p":0,"t2":["16:15","16:45"]},"82":{"p":0,"t2":["21:05","22:45"]},"01":{"p":0,"t1":["09:45","15:00"],"t2":["15:00","21:45"]},"02":{"p":1,"t1":["05:24","13:15"],"t2":["16:45","19:15"]},"03":{"p":0,"t1":["05:56","14:15"],"t2":["14:15","21:18"]},"04":{"p":0,"t1":["08:15","13:30"],"t2":["13:30","21:49"]},"05":{"p":0,"t1":["08:45","15:15"],"t2":["15:15","23:39"]},"92":{"p":0,"t2":["22:45","00:07"]},"06":{"p":0,"t1":["07:50","14:20"],"t2":["14:20","22:45"]}}},"3338":{"Fest":{"25F":{"p":0,"t1":["08:11","10:00"],"t2":["22:00","23:30"]},"81":{"p":0,"t2":["23:00","00:21"]},"83":{"p":0,"t2":["21:00","23:54"]},"01":{"p":0,"t1":["07:40","15:30"],"t2":["15:30","23:00"]},"03F":{"p":0,"t1":["08:40","15:30"],"t2":["15:30","21:00"]},"05":{"p":0,"t1":["10:00","15:10"],"t2":["15:10","22:00"]}},"Lab":{"22":{"p":0,"t1":["06:26","08:30"],"t2":["20:30","22:00"]},"23":{"p":0,"t1":["07:11","09:00"],"t2":["21:00","23:52"]},"24":{"p":0,"t1":["07:50","09:30"]},"25":{"p":0,"t1":["06:40","10:00"],"t2":["22:00","23:30"]},"81":{"p":0,"t2":["23:00","00:21"]},"26":{"p":0,"t1":["07:10","10:30"]},"01":{"p":0,"t1":["07:40","15:30"],"t2":["15:30","23:00"]},"02":{"p":0,"t1":["08:30","13:40"],"t2":["13:40","20:30"]},"03":{"p":0,"t1":["09:00","15:30"],"t2":["15:30","21:00"]},"04":{"p":0,"t1":["09:30","14:37"],"t2":["14:37","21:34"]},"05":{"p":0,"t1":["10:00","15:10"],"t2":["15:10","22:00"]},"06":{"p":0,"t1":["10:30","14:05"],"t2":["14:05","21:09"]}},"Sab":{"22":{"p":0,"t1":["06:26","20:30"],"t2":["20:30","22:00"]},"23":{"p":0,"t1":["07:11","21:00"],"t2":["21:00","23:52"]},"24S":{"p":0,"t1":["07:41","09:30"]},"25":{"p":0,"t1":["06:40","22:00"],"t2":["22:00","23:30"]},"26":{"p":0,"t1":["07:10","10:30"]},"01":{"p":0,"t1":["07:40","23:00"]},"02":{"p":0,"t1":["08:30","20:30"]},"03":{"p":0,"t1":["09:00","21:00"]},"04":{"p":0,"t1":["09:30","14:05"],"t2":["14:05","21:34"]},"05":{"p":0,"t1":["10:00","22:00"]},"81":{"p":0,"t2":["23:00","00:21"]},"06":{"p":0,"t1":["10:30","13:30"],"t2":["13:30","21:09"]}}},"3339":{"Lab":{"21":{"p":0,"t1":["09:55","14:40"]},"22":{"p":0,"t1":["10:25","15:10"],"t2":["15:10","21:13"]},"23":{"p":0,"t1":["10:55","14:10"]},"01":{"p":0,"t2":["14:40","22:13"]},"03":{"p":0,"t2":["14:10","21:43"]}}},"3340":{"Lab":{"21":{"p":0,"t1":["05:44","09:05"]},"22":{"p":0,"t1":["06:44","10:05"]},"82":{"p":0,"t2":["22:05","23:13"]},"01":{"p":0,"t1":["07:05","14:10"],"t2":["14:10","22:13"]},"02":{"p":0,"t1":["08:05","14:30"],"t2":["14:30","22:05"]}},"Sab":{"82":{"p":0,"t2":["22:05","23:13"]},"01S":{"p":0,"t1":["05:44","14:10"],"t2":["14:10","22:11"]},"02S":{"p":0,"t1":["06:44","14:30"],"t2":["14:30","22:05"]}}}};
+const JOR={"3197":{"CL01":[["3189","04:19","06:35"],["2321","06:34","09:49"],["2324","12:38","14:43"]],"CL02":[["2314","14:33","15:45"],["2324","15:45","20:03"],["3189","22:10","00:55"]],"CL03":[["3189","04:40","06:50"],["3197","06:50","07:34"],["2312","07:34","10:36"],["3144","12:45","14:45"]],"CL04":[["2324","13:38","14:52"],["2312","16:33","20:42"],["3189","22:10","00:45"]],"CL05":[["3189","03:40","05:40"],["3129","06:02","06:55"],["2321","07:04","11:24"]],"CL06":[["2312","13:03","15:10"],["2312","17:03","19:09"],["3189","21:35","00:40"]],"CL07":[["3189","04:30","06:45"],["3197","06:45","07:15"],["2318","07:15","09:14"],["2312","12:33","15:38"]],"CL08":[["2314","15:00","20:58"],["3189","22:10","01:00"]],"CL09":[["3189","04:45","07:00"],["3197","07:00","07:30"],["2318","07:30","09:29"],["3136","13:15","15:35"]],"CL10":[["3336","13:45","16:45"],["3136","21:00","01:37"]],"CL11":[["3189","04:20","06:40"],["3197","06:40","07:00"],["2312","07:00","11:14"],["2321","12:43","14:08"]],"CL12":[["2321","13:08","15:38"],["2321","17:43","21:08"],["3136","22:30","00:55"]],"CL13":[["3189","04:15","06:30"],["3197","06:30","07:05"],["2324","07:00","09:13"],["2318","12:43","15:51"]],"CL14":[["3115","14:10","16:10"],["2314","17:33","19:02"],["3136","21:30","02:02"]],"CL16":[["3115","14:00","16:00"],["2324","18:13","20:32"],["3136","21:45","01:55"]]}};
+const STORE="emb_calc_2026_v4";
+const NIGHT=[[0,390],[1320,1830]];
+const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
+let state=load(),tab="resumen",period=currentPeriod();
+function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};return s;}}catch(e){}return{registro:[],serv:{},jor:{}};}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+const LINEAS=Object.keys(CAT).sort();
+function jorGet(g){return Object.assign({},JOR[g]||{},(state.jor&&state.jor[g])||{});}
+function tiposFor(l){return CAT[l]?Object.keys(CAT[l]):[];}
+function servsFor(l,t){const base=CAT[l]&&CAT[l][t]?Object.keys(CAT[l][t]):[];const ex=Object.keys(state.serv).filter(k=>k.indexOf(l+"|"+t+"|")===0).map(k=>k.split("|")[2]);return [...new Set([...base,...ex])].sort();}
+function catSd(l,t,s){return state.serv[l+"|"+t+"|"+s]||(CAT[l]&&CAT[l][t]&&CAT[l][t][s])||null;}
+function currentPeriod(){const t=new Date();let m=t.getMonth(),y=t.getFullYear();if(t.getDate()>=26){m++;if(m>11){m=0;y++;}}return{y,m};}
+function periodStart(p){const m=p.m-1<0?11:p.m-1,y=p.m-1<0?p.y-1:p.y;return new Date(y,m,26);}
+function periodEnd(p){return new Date(p.y,p.m,25,23,59,59);}
+function periodLabel(p){const s=periodStart(p),e=periodEnd(p);return"26 "+MN[s.getMonth()].slice(0,3)+" – 25 "+MN[e.getMonth()].slice(0,3)+" "+e.getFullYear();}
+function shiftPeriod(d){let m=period.m+d,y=period.y;while(m>11){m-=12;y++;}while(m<0){m+=12;y--;}period={y,m};}
+function inPeriod(f){const d=new Date(f+"T12:00:00");return d>=periodStart(period)&&d<=periodEnd(period);}
+function periodFromDate(f){const d=new Date(f+"T12:00:00");let m=d.getMonth(),y=d.getFullYear();if(d.getDate()>=26){m++;if(m>11){m=0;y++;}}return{y,m};}
+function tipoForDate(f){const d=new Date(f+"T12:00:00").getDay();return d===6?"Sab":d===0?"Fest":"Lab";}
+function toMin(h){if(!h)return null;const[a,b]=h.split(":").map(Number);return a*60+b;}
+function spanMin(i,f){const a=toMin(i),b=toMin(f);if(a==null||b==null)return 0;return b>=a?b-a:b+1440-a;}
+function nightAbs(a,b){let t=0;for(const[w0,w1]of NIGHT)t+=Math.max(0,Math.min(b,w1)-Math.max(a,w0));return t;}
+function turnoAvail(sd){return{1:!!(sd&&sd.t1),2:!!(sd&&sd.t2),P:!!(sd&&sd.t1&&sd.t2)};}
+function turnoTramos(sd,t){if(!sd)return[];if(t==='1')return sd.t1?[sd.t1]:[];if(t==='2')return sd.t2?[sd.t2]:[];return[sd.t1,sd.t2].filter(Boolean);}
+function bloqueTramos(b,tipo){if(b.man){return b.man.ini&&b.man.fin?[[b.man.ini,b.man.fin]]:[];}return turnoTramos(catSd(b.linea,tipo,b.servicio),b.turno);}
+function diaTramos(e){let out=[];for(const b of e.bloques)for(const tr of bloqueTramos(b,e.tipo))out.push(tr);return out;}
+function diaCalc(tramos){let iv=tramos.map(([i,f])=>{let a=toMin(i),b=toMin(f);if(b<a)b+=1440;return[a,b];}).sort((x,y)=>x[0]-y[0]);let horas=0,noct=0,espera=0;for(let k=0;k<iv.length;k++){horas+=iv[k][1]-iv[k][0];noct+=nightAbs(iv[k][0],iv[k][1]);if(k>0){const g=iv[k][0]-iv[k-1][1];if(g>0&&g<60){horas+=g;espera+=g;}}}return{horas:horas/60,noct:noct/60,espera};}
+function diaDietas(tramos){if(!tramos.length)return{desayuno:false,comida:false,cena:false};const iv=tramos.map(([i,f])=>{let a=toMin(i),b=toMin(f);if(b<a)b+=1440;return[a,b];});const earliest=Math.min(...iv.map(x=>x[0])),latest=Math.max(...iv.map(x=>x[1]));const turno=earliest<780?1:2;return{desayuno:turno===1&&earliest<270,comida:turno===1?latest>930:earliest<810,cena:latest>1470};}
+function hhmm(dec){return (Math.round(dec*100)/100).toFixed(2).replace(".",",")+" h";}
+function tLabel(t){return t==='1'?"T1":t==='2'?"T2":"Part";}
+
+const JOR_STD=7.75,JOR_MIN=7;
+function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0;for(const e of state.registro){if(!inPeriod(e.fecha))continue;ndias++;const c=diaCalc(diaTramos(e));horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,JOR_MIN)-JOR_STD;const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias};}
+function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d).toFixed(2).replace(".",",")+" h";}
+
+function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
+function fallbackCopy(t){const ta=document.getElementById("exp_t");if(ta){ta.select();ta.setSelectionRange(0,99999);try{document.execCommand("copy");toast("Copiado");}catch(e){toast("Copia manual");}}}
+function bindBackup(){const e=document.getElementById("b_exp");if(!e)return;e.onclick=exportData;document.getElementById("b_imp").onclick=importData;}
+function exportData(){
+  const json=JSON.stringify(state);
+  openSheet(`<div class="grab"></div><h2>Exportar datos</h2>
+   <p class="hint">Copia este texto y guárdalo, o pásalo al otro móvil y pégalo en “Importar”.</p>
+   <textarea id="exp_t" readonly style="width:100%;height:150px;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:12px;font-family:monospace;background:var(--bg);color:var(--ink)">${json.replace(/</g,"&lt;")}</textarea>
+   <div class="actions"><button class="btn ghost" id="exp_dl">Descargar archivo</button><button class="btn primary" id="exp_cp">Copiar</button></div>`);
+  document.getElementById("exp_cp").onclick=()=>copyText(json);
+  document.getElementById("exp_dl").onclick=()=>{try{const b=new Blob([json],{type:"application/json"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="calculadora-emb-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);toast("Archivo descargado");}catch(e){toast("Usa Copiar");}};
+}
+function importData(){
+  openSheet(`<div class="grab"></div><h2>Importar datos</h2>
+   <p class="hint">Pega aquí el texto exportado del otro móvil. <b>Reemplazará</b> tus datos actuales.</p>
+   <textarea id="imp_t" placeholder="Pega aquí…" style="width:100%;height:150px;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:12px;font-family:monospace;background:var(--surface);color:var(--ink)"></textarea>
+   <div class="actions"><button class="btn ghost" id="imp_file">Desde archivo</button><button class="btn primary" id="imp_go">Importar</button></div>
+   <input type="file" id="imp_fl" accept=".json,application/json" style="display:none">`);
+  document.getElementById("imp_file").onclick=()=>document.getElementById("imp_fl").click();
+  document.getElementById("imp_fl").onchange=ev=>{const fl=ev.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{document.getElementById("imp_t").value=r.result;};r.readAsText(fl);};
+  document.getElementById("imp_go").onclick=()=>{
+    const txt=document.getElementById("imp_t").value.trim();if(!txt){toast("Pega los datos primero");return;}
+    let d;try{d=JSON.parse(txt);}catch(e){toast("Texto no válido");return;}
+    if(!d||!Array.isArray(d.registro)){toast("No es una copia válida");return;}
+    if(!confirm("Esto reemplazará TODOS tus datos actuales por los importados. ¿Continuar?"))return;
+    state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{}};save();closeSheet();render();toast("Datos importados");
+  };
+}
+function render(){
+  document.getElementById("plabel").innerHTML=periodLabel(period)+"<small>sabanilla</small>";
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
+  const v=document.getElementById("view"),fab=document.getElementById("fab");
+  if(tab==="resumen"){fab.style.display="none";v.innerHTML=viewResumen();bindBackup();}
+  else if(tab==="dias"){fab.style.display="";fab.textContent="+ Añadir día";v.innerHTML=viewDias();document.querySelectorAll("[data-eid]").forEach(el=>el.onclick=()=>editDia(el.dataset.eid));}
+  else{fab.style.display="";fab.textContent=isGrupo(browseL)?"+ Nueva jornada":"+ Nuevo servicio";v.innerHTML=viewServicios();bindServicios();}
+}
+function viewResumen(){const t=periodTotals();return `<div class="card">
+  <div class="bigrow"><span class="k">Horas trabajadas</span><span class="v">${hhmm(t.horas)}</span></div>
+  <div class="bigrow"><span class="k">Horas acumuladas (saldo)</span><span class="v" style="color:${t.acum>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(t.acum)}</span></div>
+  <div class="bigrow"><span class="k">Horas nocturnas</span><span class="v">${hhmm(t.noct)}</span></div>
+  <div class="bigrow"><span class="k">Días registrados</span><span class="v">${t.ndias}</span></div></div>
+  <div class="card"><div class="bigrow"><span class="k">Desayunos</span><span class="v">${t.nd}</span></div>
+  <div class="bigrow"><span class="k">Comidas</span><span class="v">${t.nc}</span></div>
+  <div class="bigrow"><span class="k">Cenas</span><span class="v">${t.nce}</span></div></div>
+  <p class="hint">Contadores del período 26→25. Cámbialo con las flechas de arriba.</p>
+  <div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:4px">Copia de seguridad</div>
+  <p class="hint" style="margin:0 0 10px">Guarda todos tus datos (días, servicios y jornadas) para pasarlos a otro móvil.</p>
+  <div class="actions" style="margin-top:0"><button class="btn ghost" id="b_exp">Exportar</button><button class="btn primary" id="b_imp">Importar</button></div></div>`;}
+function viewDias(){
+  const list=state.registro.filter(e=>inPeriod(e.fecha)).sort((a,b)=>a.fecha<b.fecha?-1:1);
+  if(!list.length)return `<div class="empty">No hay días en este período.<br>Pulsa “+ Añadir día”.</div>`;
+  let h="<div class='card'>";
+  for(const e of list){const c=diaCalc(diaTramos(e));const d=e.dietas||{};
+    const dt=new Date(e.fecha+"T12:00:00"),dn=["DO","LU","MA","MI","JU","VI","SA"][dt.getDay()];
+    let chips="";if(c.noct>0.01)chips+="<span class='chip n'>noct "+hhmm(c.noct)+"</span>";
+    if(d.desayuno)chips+="<span class='chip di'>Des</span>";if(d.comida)chips+="<span class='chip di'>Com</span>";if(d.cena)chips+="<span class='chip di'>Cen</span>";
+    const n=e.bloques.length,b0=e.bloques[0],l0=b0.man?(b0.man.l||b0.man.ini):(b0.linea+"·"+b0.servicio),lab=e.lab?e.lab:(l0+(n>1?" +"+(n-1):""));
+    h+=`<div class="item" data-eid="${e.id}"><div class="d"><b>${dt.getDate()}</b><small>${dn}</small></div>
+      <div class="mid"><div class="t1">${lab}</div><div class="t2">${chips||"&nbsp;"}</div></div>
+      <div class="r"><b>${hhmm(c.horas)}</b></div></div>`;}
+  return h+"</div>";}
+
+function openSheet(html){document.getElementById("sheet").innerHTML=html;document.getElementById("sheetbg").classList.add("show");requestAnimationFrame(()=>document.getElementById("sheet").classList.add("show"));document.getElementById("sheetbg").onclick=closeSheet;}
+function closeSheet(){document.getElementById("sheet").classList.remove("show");document.getElementById("sheetbg").classList.remove("show");}
+function val(id){const e=document.getElementById(id);return e?e.value:"";}
+function chk(id){const e=document.getElementById(id);return e?e.checked:false;}
+let toastT;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1500);}
+function defaultFecha(){const s=periodStart(period),t=new Date();const d=(t>=s&&t<=periodEnd(period))?t:s;return d.toISOString().slice(0,10);}
+
+let E=null, manualDiet=false;
+function editDia(id){
+  E=id?JSON.parse(JSON.stringify(state.registro.find(x=>x.id===id))):{id:null,fecha:defaultFecha(),tipo:"",bloques:[{linea:LINEAS[0],servicio:"",turno:"1",man:null}],dietas:null};
+  if(!E.tipo)E.tipo=tipoForDate(E.fecha);
+  manualDiet=!!(id&&E.dietas);
+  // asegurar servicio inicial
+  E.bloques.forEach(b=>{if(!b.man&&!b.servicio){const ss=servsFor(b.linea,E.tipo);b.servicio=ss[0]||"";const sd=catSd(b.linea,E.tipo,b.servicio);b.turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");}});
+  openSheet(`<div class="grab"></div><h2>${id?"Editar":"Añadir"} día</h2>
+    <div class="fields"><div class="field"><label>Fecha</label><input id="f_fecha" type="date" value="${E.fecha}"/></div>
+    <div class="field"><label>Tipo de día</label><select id="f_tipo"></select></div></div>
+    <div class="blq" style="background:var(--noct-soft);border-color:#C5CAE9">
+      <div style="font-size:12px;color:var(--noct);font-weight:700;margin-bottom:6px">Jornadas de grupo (3197/3198)</div>
+      <div class="fields"><div class="field"><label>Grupo</label><select id="jg"><option value="3197">3197</option><option value="3198">3198</option></select></div>
+      <div class="field"><label>Jornada</label><select id="jc"></select></div></div>
+      <div class="fields" style="margin-top:6px"><div class="field"><button class="addbtn" id="jload" style="margin:0;background:var(--noct);color:#fff;border-style:solid;border-color:var(--noct)">Cargar</button></div>
+      <div class="field"><button class="addbtn" id="jdel" style="margin:0;padding:10px;font-size:13px;color:var(--emb)">Borrar guardada</button></div></div>
+      <div class="fields" style="margin-top:6px"><div class="field"><label>Guardar lo montado como</label><input id="jname" placeholder="ej. 3198-A"></div>
+      <div class="field"><label>&nbsp;</label><button class="addbtn" id="jsave" style="margin:0;padding:10px;font-size:13px">Guardar jornada</button></div></div></div>
+    <div style="font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 6px">Servicios del día</div>
+    <div id="bloques"></div>
+    <button class="addbtn" id="addb">+ Añadir otro servicio</button>
+    <div class="calcbox"><div><span>Horas</span><b id="c_h">0h 00m</b></div><div><span>Nocturnas</span><b id="c_n">0h 00m</b></div><div class="esp" id="c_e"></div></div>
+    <div id="dietwrap"></div>
+    <div class="actions">${id?'<button class="btn danger" id="e_del">Borrar</button>':''}<button class="btn ghost" id="e_cancel">Cancelar</button><button class="btn primary" id="e_save">Guardar</button></div>`);
+  const fTipo=document.getElementById("f_tipo"),fFecha=document.getElementById("f_fecha");
+  function fillTipos(){const ts=tiposFor(E.bloques[0].linea).length?["Lab","Sab","Fest"]:["Lab","Sab","Fest"];fTipo.innerHTML=["Lab","Sab","Fest"].map(t=>`<option value="${t}" ${t===E.tipo?"selected":""}>${TIPOL[t]}</option>`).join("");}
+  fillTipos();
+  fFecha.onchange=()=>{E.fecha=fFecha.value;if(!id){E.tipo=tipoForDate(E.fecha);fillTipos();}renderBloques();};
+  fTipo.onchange=()=>{E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
+  function fillJC(){const g=document.getElementById("jg").value;const j=jorGet(g);const ks=Object.keys(j).sort();const jc=document.getElementById("jc");jc.innerHTML=ks.length?ks.map(k=>`<option value="${k}">${k}</option>`).join(""):'<option value="">(pendiente)</option>';}
+  document.getElementById("jg").onchange=fillJC;fillJC();
+  document.getElementById("jload").onclick=()=>{const g=document.getElementById("jg").value,c=document.getElementById("jc").value;const j=jorGet(g);if(!c||!j[c]){toast("No hay datos de esa jornada");return;}E.bloques=j[c].map(t=>({man:{l:t[0],ini:t[1],fin:t[2]}}));manualDiet=false;E.dietas=null;renderBloques();toast("Jornada "+c+" cargada");};
+  document.getElementById("jsave").onclick=()=>{const g=document.getElementById("jg").value;const nm=(val("jname")||"").trim();if(!nm){toast("Ponle un nombre");return;}const out=[];for(const b of E.bloques){const lbl=b.man?(b.man.l||""):b.linea;for(const t of bloqueTramos(b,E.tipo))out.push([lbl,t[0],t[1]]);}if(!out.length){toast("Monta primero los servicios");return;}state.jor[g]=state.jor[g]||{};state.jor[g][nm]=out;save();fillJC();document.getElementById("jc").value=nm;document.getElementById("jname").value="";toast("Jornada "+nm+" guardada en "+g);};
+  document.getElementById("jdel").onclick=()=>{const g=document.getElementById("jg").value,c=document.getElementById("jc").value;if(!c){toast("Elige una jornada");return;}if(state.jor[g]&&state.jor[g][c]){delete state.jor[g][c];save();fillJC();toast("Borrada");}else{toast("Las de fábrica no se borran");}};
+  document.getElementById("addb").onclick=()=>{E.bloques.push({linea:E.bloques[E.bloques.length-1].linea,servicio:"",turno:"1",man:null});const b=E.bloques[E.bloques.length-1];const ss=servsFor(b.linea,E.tipo);b.servicio=ss[0]||"";const sd=catSd(b.linea,E.tipo,b.servicio);b.turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");renderBloques();};
+  document.getElementById("e_cancel").onclick=closeSheet;
+  if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();closeSheet();render();toast("Día borrado");};
+  document.getElementById("e_save").onclick=()=>{
+    E.fecha=fFecha.value;if(!E.fecha){toast("Pon la fecha");return;}
+    const tr=diaTramos(E);if(!tr.length){toast("Falta el horario de algún servicio");return;}
+    E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};
+    if(!E.id)E.id=uid();
+    const idx=state.registro.findIndex(x=>x.id===E.id);
+    if(idx>=0)state.registro[idx]=E;else state.registro.push(E);
+    save();if(!inPeriod(E.fecha))period=periodFromDate(E.fecha);closeSheet();render();toast("Guardado");
+  };
+  renderBloques();
+}
+function renderBloques(){
+  const cont=document.getElementById("bloques");
+  cont.innerHTML=E.bloques.map((b,i)=>{
+    const rm=E.bloques.length>1?`<button class="rm" data-rm="${i}">&times;</button>`:"";
+    const tramos=bloqueTramos(b,E.tipo).map(x=>x[0]+"–"+x[1]).join("  +  ")||"—";
+    if(b.man){
+      return `<div class="blq">${rm}<div class="fields"><div class="field"><label>Línea / serv.</label><input data-ml="${i}" value="${b.man.l||''}" placeholder="ej. 3189"></div>
+        <div class="field"><label>&nbsp;</label><button class="addbtn" data-tocat="${i}" style="margin:0;padding:10px;font-size:13px">Usar catálogo</button></div></div>
+        <div class="fields"><div class="field"><label>Inicio</label><input type="time" data-mi="${i}" value="${b.man.ini||''}"></div><div class="field"><label>Fin</label><input type="time" data-mf="${i}" value="${b.man.fin||''}"></div></div>
+        <div class="tramos">${tramos}</div></div>`;
+    }
+    const lopts=LINEAS.map(l=>`<option value="${l}" ${b.linea===l?"selected":""}>${l}</option>`).join("");
+    const ss=servsFor(b.linea,E.tipo);
+    const sopts=ss.map(s=>`<option value="${s}" ${b.servicio===s?"selected":""}>${s}${catSd(b.linea,E.tipo,s)&&catSd(b.linea,E.tipo,s).p?" (part.)":""}</option>`).join("")+'<option value="__man__">— a mano —</option>';
+    const sd=catSd(b.linea,E.tipo,b.servicio),av=turnoAvail(sd);
+    const body=`<div class="seg" data-seg="${i}">
+        <button type="button" data-t="1" ${av[1]?"":"disabled"} class="${b.turno==='1'?'on':''}">Turno 1</button>
+        <button type="button" data-t="2" ${av[2]?"":"disabled"} class="${b.turno==='2'?'on':''}">Turno 2</button>
+        <button type="button" data-t="P" ${av.P?"":"disabled"} class="${b.turno==='P'?'on':''}">Partida</button></div>`;
+    return `<div class="blq">${rm}<div class="fields"><div class="field"><label>Línea</label><select data-lin="${i}">${lopts}</select></div>
+      <div class="field"><label>Servicio</label><select data-srv="${i}">${sopts}</select></div></div>
+      ${body}<div class="tramos">${tramos}</div></div>`;
+  }).join("");
+  // bind
+  cont.querySelectorAll("[data-lin]").forEach(el=>el.onchange=()=>{const i=+el.dataset.lin;E.bloques[i].linea=el.value;E.bloques[i].man=null;const ss=servsFor(el.value,E.tipo);E.bloques[i].servicio=ss[0]||"";const sd=catSd(el.value,E.tipo,E.bloques[i].servicio);E.bloques[i].turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");manualDiet=false;renderBloques();});
+  cont.querySelectorAll("[data-srv]").forEach(el=>el.onchange=()=>{const i=+el.dataset.srv;if(el.value==="__man__"){E.bloques[i].man={ini:"",fin:""};}else{E.bloques[i].man=null;E.bloques[i].servicio=el.value;const sd=catSd(E.bloques[i].linea,E.tipo,el.value);E.bloques[i].turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");}manualDiet=false;renderBloques();});
+  cont.querySelectorAll("[data-seg]").forEach(seg=>seg.querySelectorAll("button").forEach(btn=>btn.onclick=()=>{if(btn.disabled)return;const i=+seg.dataset.seg;E.bloques[i].turno=btn.dataset.t;manualDiet=false;renderBloques();}));
+  cont.querySelectorAll("[data-rm]").forEach(el=>el.onclick=()=>{E.bloques.splice(+el.dataset.rm,1);manualDiet=false;renderBloques();});
+  cont.querySelectorAll("[data-ml]").forEach(el=>el.oninput=()=>{E.bloques[+el.dataset.ml].man.l=el.value;});
+  cont.querySelectorAll("[data-tocat]").forEach(el=>el.onclick=()=>{const i=+el.dataset.tocat;E.bloques[i]={linea:LINEAS[0],servicio:"",turno:"1",man:null};const ss=servsFor(LINEAS[0],E.tipo);E.bloques[i].servicio=ss[0]||"";const sd=catSd(LINEAS[0],E.tipo,E.bloques[i].servicio);E.bloques[i].turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");manualDiet=false;renderBloques();});
+  cont.querySelectorAll("[data-mi]").forEach(el=>el.onchange=()=>{E.bloques[+el.dataset.mi].man.ini=el.value;manualDiet=false;recompute();});
+  cont.querySelectorAll("[data-mf]").forEach(el=>el.onchange=()=>{E.bloques[+el.dataset.mf].man.fin=el.value;manualDiet=false;recompute();});
+  recompute();
+}
+function recompute(){
+  const tr=diaTramos(E),c=diaCalc(tr);
+  const ch=document.getElementById("c_h");if(!ch)return;
+  ch.textContent=hhmm(c.horas);document.getElementById("c_n").textContent=hhmm(c.noct);
+  document.getElementById("c_e").textContent=c.espera>0?("incluye "+hhmm(c.espera/60)+" de espera (<1h)"):"";
+  const base=manualDiet&&E.dietas?E.dietas:diaDietas(tr);
+  document.getElementById("dietwrap").innerHTML=`<label style="font-size:12px;color:var(--muted);font-weight:600;">Dietas (automáticas, editables)</label>
+    <div class="diet"><label><input type="checkbox" id="e_des" ${base.desayuno?"checked":""}> Desayuno</label><label><input type="checkbox" id="e_com" ${base.comida?"checked":""}> Comida</label><label><input type="checkbox" id="e_cen" ${base.cena?"checked":""}> Cena</label></div>`;
+  ["e_des","e_com","e_cen"].forEach(id=>document.getElementById(id).onchange=()=>{manualDiet=true;E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};});
+}
+let browseL=LINEAS[0],browseT="Lab";
+function isGrupo(l){return l==="3197"||l==="3198";}
+const IMPBTN='<button class="addbtn" id="impcat" style="margin-bottom:10px;border-style:solid;border-color:var(--noct);color:var(--noct)">\u2b06 Importar catálogo (CSV)</button>';
+function csvParse(text){text=text.replace(/^\uFEFF/,'');const lines=text.split(/\r\n|\n|\r/).filter(l=>l.trim()!=='');if(!lines.length)return{head:[],rows:[]};const d=(lines[0].split(';').length>lines[0].split(',').length)?';':',';const p=l=>l.split(d).map(c=>c.replace(/^"|"$/g,'').trim());return{head:p(lines[0]),rows:lines.slice(1).map(p)};}
+function normTime(v){if(!v)return'';v=(''+v).trim();const m=v.match(/(\d{1,2}):(\d{2})/);if(m)return String(+m[1]).padStart(2,'0')+':'+m[2];const fl=parseFloat(v.replace(',','.'));if(!isNaN(fl)&&fl>0&&fl<1){const mm=Math.round(fl*1440);return String(Math.floor(mm/60)).padStart(2,'0')+':'+String(mm%60).padStart(2,'0');}return v;}
+function importCatFile(text,acc){
+  const o=csvParse(text);const H=o.head.map(x=>x.toLowerCase());
+  if(H.some(x=>x.indexOf('servicio')>=0)&&H.some(x=>x.indexOf('t1')>=0)){
+    for(const r of o.rows){const lin=(r[0]||'').trim(),tipo=(r[1]||'Lab').trim(),serv=(r[2]||'').trim();if(!lin||!serv)continue;
+      const sd={p:(r[7]&&/s[ií]|^1$|x/i.test((r[7]||'').trim()))?1:0};const a1=normTime(r[3]),b1=normTime(r[4]),a2=normTime(r[5]),b2=normTime(r[6]);
+      if(a1&&b1)sd.t1=[a1,b1];if(a2&&b2)sd.t2=[a2,b2];if(!sd.t1&&!sd.t2)continue;
+      state.serv[lin+'|'+tipo+'|'+serv]=sd;acc.s++;}
+  }else if(H.some(x=>x.indexOf('jornada')>=0)){
+    const map={};for(const r of o.rows){const g=(r[0]||'').trim(),jn=(r[1]||'').trim();if(!g||!jn)continue;const k=g+'||'+jn;(map[k]=map[k]||[]).push([parseInt(r[2])||0,(r[3]||'').trim(),normTime(r[4]),normTime(r[5])]);}
+    for(const k of Object.keys(map)){const g=k.split('||')[0],jn=k.split('||')[1];const arr=map[k].sort((a,b)=>a[0]-b[0]).map(x=>[x[1],x[2],x[3]]).filter(x=>x[1]&&x[2]);if(arr.length){state.jor[g]=state.jor[g]||{};state.jor[g][jn]=arr;acc.j++;}}
+  }else acc.bad++;
+}
+function openImportCat(){
+  openSheet(`<div class="grab"></div><h2>Importar catálogo</h2>
+   <p class="hint">Edita el Excel y guarda cada hoja como <b>CSV</b> (Excel: Archivo › Guardar como › CSV. Google Sheets: Archivo › Descargar › CSV). Luego elige aquí los CSV (puedes seleccionar los dos a la vez).</p>
+   <p class="hint">La app detecta sola si es la hoja de Servicios o la de Jornadas, y <b>reemplaza</b> esos datos con los del archivo. Entra en la copia de seguridad.</p>
+   <input type="file" id="impcatf" accept=".csv,text/csv,text/plain" multiple style="display:none">
+   <div class="actions"><button class="btn ghost" id="impcat_c">Cancelar</button><button class="btn primary" id="impcat_go">Elegir CSV</button></div>`);
+  document.getElementById("impcat_c").onclick=closeSheet;
+  document.getElementById("impcat_go").onclick=()=>document.getElementById("impcatf").click();
+  document.getElementById("impcatf").onchange=ev=>{const files=[...ev.target.files];if(!files.length)return;const acc={s:0,j:0,bad:0};let done=0;
+    files.forEach(fl=>{const r=new FileReader();r.onload=()=>{try{importCatFile(r.result,acc);}catch(e){acc.bad++;}done++;if(done===files.length){save();closeSheet();render();toast("Importado: "+acc.s+" servicios, "+acc.j+" jornadas"+(acc.bad?" ("+acc.bad+" no reconocidos)":""));}};r.onerror=()=>{acc.bad++;done++;if(done===files.length){save();closeSheet();render();toast("Importado: "+acc.s+" servicios, "+acc.j+" jornadas");}};r.readAsText(fl);});};
+}
+function viewServicios(){
+  const allL=[...LINEAS,"3197","3198"];
+  const lopts=allL.map(l=>`<option value="${l}" ${browseL===l?"selected":""}>${l}${isGrupo(l)?" (grupo)":""}</option>`).join("");
+  if(isGrupo(browseL)){
+    const j=jorGet(browseL);const ks=Object.keys(j).sort();
+    let rows=ks.map(name=>{const tr=j[name].map(t=>[t[1],t[2]]);const c=diaCalc(tr);const cust=(state.jor[browseL]&&state.jor[browseL][name])?" <span class='chip di'>guardado</span>":"";
+      return `<div class="item" data-gkey="${browseL}|${name}"><div class="mid"><div class="t1">${name}${cust}</div><div class="t2">${j[name].length} serv · ${hhmm(c.horas)}${c.noct>0.01?" · noct "+hhmm(c.noct):""}</div></div><div class="r">&#8250;</div></div>`;}).join("");
+    if(!ks.length)rows='<div class="empty">Sin jornadas. Pulsa “+ Nueva jornada”.</div>';
+    return `${IMPBTN}<div class="card"><div class="field"><label>Línea</label><select id="bL">${lopts}</select></div></div><div class="card">${rows}</div><p class="hint">Grupo ${browseL}: cada servicio es una jornada. Tócala para ver el cálculo o editarla.</p>`;
+  }
+  const topts=["Lab","Sab","Fest"].map(t=>`<option value="${t}" ${browseT===t?"selected":""}>${TIPOL[t]}</option>`).join("");
+  const ss=servsFor(browseL,browseT);
+  let rows=ss.map(s=>{const sd=catSd(browseL,browseT,s);const t1=sd&&sd.t1?("T1 "+sd.t1[0]+"–"+sd.t1[1]):"";const t2=sd&&sd.t2?("T2 "+sd.t2[0]+"–"+sd.t2[1]):"";const ov=state.serv[browseL+"|"+browseT+"|"+s]?" <span class='chip di'>guardado</span>":"";
+    return `<div class="item" data-skey="${browseL}|${browseT}|${s}"><div class="mid"><div class="t1">${s}${ov}</div><div class="t2">${[t1,t2].filter(Boolean).join("   ")||"sin horario"}</div></div><div class="r">&#8250;</div></div>`;}).join("");
+  if(!ss.length)rows='<div class="empty">Sin servicios aquí.</div>';
+  return `${IMPBTN}<div class="card"><div class="fields"><div class="field"><label>Línea</label><select id="bL">${lopts}</select></div><div class="field"><label>Tipo de día</label><select id="bT">${topts}</select></div></div></div><div class="card">${rows}</div><p class="hint">Toca un servicio para editar sus horas. “+ Nuevo servicio” para crear uno que no esté.</p>`;
+}
+function bindServicios(){
+  document.getElementById("bL").onchange=e=>{browseL=e.target.value;render();};
+  const bt=document.getElementById("bT");if(bt)bt.onchange=e=>{browseT=e.target.value;render();};
+  const ic=document.getElementById("impcat");if(ic)ic.onclick=openImportCat;
+  document.querySelectorAll("[data-skey]").forEach(el=>el.onclick=()=>editServicio(el.dataset.skey));
+  document.querySelectorAll("[data-gkey]").forEach(el=>el.onclick=()=>{const p=el.dataset.gkey.split("|");editGrupo(p[0],p[1]);});
+}
+function apuntarDiaTramos(fecha,tramoList,lab){
+  if(!fecha){toast("Elige el día");return false;}
+  const list=tramoList.filter(t=>t[1]&&t[2]);if(!list.length){toast("Falta el horario");return false;}
+  const bloques=list.map(t=>({man:{l:t[0]||"",ini:t[1],fin:t[2]}}));
+  const tramos=list.map(t=>[t[1],t[2]]);
+  const e={id:uid(),fecha,tipo:tipoForDate(fecha),bloques,dietas:diaDietas(tramos),lab:lab||""};
+  state.registro.push(e);save();if(!inPeriod(fecha))period=periodFromDate(fecha);return true;
+}
+let GTR=[];
+function editGrupo(group,name){
+  const j=jorGet(group);
+  GTR=(name&&j[name])?j[name].map(t=>[t[0]||"",t[1],t[2]]):[["","",""]];
+  const isCustom=!!(name&&state.jor[group]&&state.jor[group][name]);
+  openSheet(`<div class="grab"></div><h2>${name||"Nueva jornada"} · grupo ${group}</h2>
+   <div class="field full"><label>Nombre</label><input id="g_n" value="${name||""}" placeholder="ej. CL05 / 3198-A"></div>
+   <div style="font-size:12px;color:var(--muted);font-weight:700;margin:12px 0 4px">Servicios de la jornada</div>
+   <div id="glist"></div>
+   <button class="addbtn" id="g_add">+ Añadir servicio</button>
+   <div class="calcbox"><div><span>Horas</span><b id="g_h">0,00 h</b></div><div><span>Nocturnas</span><b id="g_nn">0,00 h</b></div><div class="esp" id="g_e"></div></div>
+   <div id="g_diet" style="font-size:12px;color:var(--dieta);font-weight:700;margin-bottom:8px"></div>
+   <div class="fields" style="align-items:end"><div class="field"><label>Apuntar en el día</label><input id="g_fecha" type="date" value="${defaultFecha()}"></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="g_ap" style="padding:11px">Apuntar día</button></div></div>
+   <p class="hint" style="margin-top:8px">Regla del hueco automática: &lt;1 h suma, ≥1 h se pierde.${name&&!isCustom?" Es de fábrica; si la editas y guardas se queda tu versión.":""}</p>
+   <div class="actions">${isCustom?'<button class="btn danger" id="g_del">Borrar</button>':''}<button class="btn ghost" id="g_c">Cancelar</button><button class="btn primary" id="g_sv">Guardar</button></div>`);
+  function renderG(){
+    const c=document.getElementById("glist");
+    c.innerHTML=GTR.map((t,i)=>`<div class="blq"><button class="rm" data-gr="${i}">&times;</button>
+      <div class="field"><label>Línea (opcional)</label><input data-gl="${i}" value="${t[0]||""}" placeholder="ej. 3136"></div>
+      <div class="fields" style="margin-top:6px"><div class="field"><label>Inicio</label><input type="time" data-gi="${i}" value="${t[1]||""}"></div><div class="field"><label>Fin</label><input type="time" data-gf="${i}" value="${t[2]||""}"></div></div></div>`).join("");
+    c.querySelectorAll("[data-gl]").forEach(el=>el.oninput=()=>{GTR[+el.dataset.gl][0]=el.value;});
+    c.querySelectorAll("[data-gi]").forEach(el=>el.onchange=()=>{GTR[+el.dataset.gi][1]=el.value;calcG();});
+    c.querySelectorAll("[data-gf]").forEach(el=>el.onchange=()=>{GTR[+el.dataset.gf][2]=el.value;calcG();});
+    c.querySelectorAll("[data-gr]").forEach(el=>el.onclick=()=>{GTR.splice(+el.dataset.gr,1);if(!GTR.length)GTR=[["","",""]];renderG();});
+    calcG();
+  }
+  function calcG(){const tr=GTR.filter(t=>t[1]&&t[2]).map(t=>[t[1],t[2]]);const c=diaCalc(tr);document.getElementById("g_h").textContent=hhmm(c.horas);document.getElementById("g_nn").textContent=hhmm(c.noct);document.getElementById("g_e").textContent=c.espera>0?("incluye "+hhmm(c.espera/60)+" de espera"):"";const d=diaDietas(tr);document.getElementById("g_diet").textContent=[d.desayuno?"Desayuno":"",d.comida?"Comida":"",d.cena?"Cena":""].filter(Boolean).join(" · ")||"Sin dietas";}
+  document.getElementById("g_add").onclick=()=>{GTR.push(["","",""]);renderG();};
+  document.getElementById("g_c").onclick=closeSheet;
+  document.getElementById("g_ap").onclick=()=>{const tr=GTR.map(t=>[t[0]||"",t[1],t[2]]);if(apuntarDiaTramos(val("g_fecha"),tr,group+" · "+(val("g_n")||""))){closeSheet();render();toast("Apuntado en Días");}};
+  if(document.getElementById("g_del"))document.getElementById("g_del").onclick=()=>{delete state.jor[group][name];save();closeSheet();render();toast("Borrada");};
+  document.getElementById("g_sv").onclick=()=>{
+    const nm=val("g_n").trim();if(!nm){toast("Ponle nombre");return;}
+    const tr=GTR.filter(t=>t[1]&&t[2]).map(t=>[t[0]||"",t[1],t[2]]);if(!tr.length){toast("Pon al menos un servicio");return;}
+    if(name&&name!==nm&&state.jor[group]&&state.jor[group][name])delete state.jor[group][name];
+    state.jor[group]=state.jor[group]||{};state.jor[group][nm]=tr;save();closeSheet();render();toast("Guardada "+nm);
+  };
+  renderG();
+}
+function editServicio(key){
+  let l=browseL,t=browseT,s="";let sd=null;
+  if(key){const p=key.split("|");l=p[0];t=p[1];s=p[2];sd=catSd(l,t,s);}
+  sd=sd||{};const a=sd.t1||["",""],b=sd.t2||["",""];
+  openSheet(`<div class="grab"></div><h2>${key?"Editar":"Nuevo"} servicio</h2>
+   <div class="fields"><div class="field"><label>Línea</label><input id="s_l" value="${l}"></div>
+   <div class="field"><label>Tipo de día</label><select id="s_t">${["Lab","Sab","Fest"].map(x=>`<option value="${x}" ${x===t?"selected":""}>${TIPOL[x]}</option>`).join("")}</select></div>
+   <div class="field full"><label>Nº servicio</label><input id="s_s" value="${s}"></div></div>
+   <div style="font-size:12px;color:var(--muted);font-weight:700;margin:12px 0 4px">Turno 1 · mañana</div>
+   <div class="fields"><div class="field"><label>Inicio</label><input id="s_i1" type="time" value="${a[0]}"></div><div class="field"><label>Fin</label><input id="s_f1" type="time" value="${a[1]}"></div></div>
+   <div style="font-size:12px;color:var(--muted);font-weight:700;margin:12px 0 4px">Turno 2 · tarde</div>
+   <div class="fields"><div class="field"><label>Inicio</label><input id="s_i2" type="time" value="${b[0]}"></div><div class="field"><label>Fin</label><input id="s_f2" type="time" value="${b[1]}"></div></div>
+   <p class="hint">Rellena uno o los dos turnos. Se guarda y aparece al elegir esa línea y servicio.</p>
+   <div style="font-size:12px;color:var(--muted);font-weight:700;margin:12px 0 4px">Apuntar en un día</div>
+   <div class="fields" style="align-items:end"><div class="field"><label>Día</label><input id="s_fecha" type="date" value="${defaultFecha()}"></div><div class="field"><label>Turno</label><select id="s_turno"><option value="1">Turno 1</option><option value="2">Turno 2</option><option value="P">Partida</option></select></div></div>
+   <button class="addbtn" id="s_ap" style="background:var(--dieta);color:#fff;border-style:solid;border-color:var(--dieta);margin-top:8px">Apuntar este día</button>
+   <div class="actions">${key&&state.serv[key]?'<button class="btn danger" id="s_del">Borrar</button>':''}<button class="btn ghost" id="s_c">Cancelar</button><button class="btn primary" id="s_sv">Guardar</button></div>`);
+  document.getElementById("s_c").onclick=closeSheet;
+  document.getElementById("s_ap").onclick=()=>{const L=val("s_l").trim(),T=val("s_t"),S=val("s_s").trim();const sd=state.serv[L+"|"+T+"|"+S]||catSd(L,T,S);if(!sd){toast("Guarda primero el servicio");return;}const trs=turnoTramos(sd,val("s_turno"));if(!trs.length){toast("Ese turno no tiene horario");return;}const tr=trs.map(t=>[L+"/"+S,t[0],t[1]]);if(apuntarDiaTramos(val("s_fecha"),tr,L+" · "+S)){closeSheet();render();toast("Apuntado en Días");}};
+  if(document.getElementById("s_del"))document.getElementById("s_del").onclick=()=>{delete state.serv[key];save();closeSheet();render();toast("Borrado");};
+  document.getElementById("s_sv").onclick=()=>{
+    const L=val("s_l").trim(),T=val("s_t"),S=val("s_s").trim();if(!L||!S){toast("Pon línea y nº");return;}
+    const i1=val("s_i1"),f1=val("s_f1"),i2=val("s_i2"),f2=val("s_f2");
+    const nsd={p:(i1&&i2)?1:0};if(i1&&f1)nsd.t1=[i1,f1];if(i2&&f2)nsd.t2=[i2,f2];
+    if(!nsd.t1&&!nsd.t2){toast("Pon al menos un turno");return;}
+    if(key&&key!==L+"|"+T+"|"+S&&state.serv[key])delete state.serv[key];
+    state.serv[L+"|"+T+"|"+S]=nsd;browseL=L;browseT=T;save();closeSheet();render();toast("Guardado");
+  };
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render();});
+document.getElementById("pprev").onclick=()=>{shiftPeriod(-1);render();};
+document.getElementById("pnext").onclick=()=>{shiftPeriod(1);render();};
+document.getElementById("fab").onclick=()=>{if(tab==="servicios"){if(isGrupo(browseL))editGrupo(browseL,null);else editServicio(null);}else{if(tab!=="dias"){tab="dias";render();}editDia(null);}};
+render();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+</script></body></html>
