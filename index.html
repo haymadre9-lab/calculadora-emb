@@ -112,7 +112,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="1.0";
+const APP_VER="1.1";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -131,7 +131,7 @@ let calMonth=calInitMonth(),calPhaseMap={};
 const CAL_ESP="emb_calesp_2026";
 let espData=espLoad();CAL_TYPES.ESP.n=espData.list.length;let calEdit=false,calPaint="M";
 const CAL_YSTART=[0,31,59,90,120,151,181,212,243,273,304,334];
-function espLoad(){try{const s=JSON.parse(localStorage.getItem(CAL_ESP));if(s&&Array.isArray(s.list)&&s.list.length)return s;}catch(e){}return{list:[{name:"76-Mod",codes:"D".repeat(365)}]};}
+function espLoad(){try{const s=JSON.parse(localStorage.getItem(CAL_ESP));if(s&&Array.isArray(s.list)&&s.list.length)return s;}catch(e){}return{list:[{name:"76-Mod",codes:"D".repeat(365),jor:"100"}]};}
 function espSave(){try{localStorage.setItem(CAL_ESP,JSON.stringify(espData));}catch(e){}}
 function espList(){return espData.list;}
 function espCur(){return espData.list[calGrp-1]||espData.list[0];}
@@ -142,10 +142,10 @@ function palLbl(c){return{M:"Ma\u00f1ana",T:"Tarde",D:"Franqueo",V:"Vacac.",F:"F
 function espToolbar(){const nm=(espCur().name)||("Especial "+calGrp);let h='<span class="callbl" id="cal_espname" title="Renombrar" style="color:var(--emb);cursor:pointer">'+nm+'</span>'+'<button class="calmini" id="cal_new">+ Nuevo</button>'+'<button class="calmini'+(calEdit?" on":"")+'" id="cal_edit">'+(calEdit?"\u2713 Editando":"\u270e Editar")+'</button>';if(calEdit){h+='<div class="calpal">'+["M","T","D","V","F","2"].map(c=>'<button data-c="'+c+'" class="'+(calPaint===c?"on":"")+'" style="background:'+palBg(c)+';color:'+palTx(c)+'">'+palLbl(c)+'</button>').join("")+'</div>';h+='<span class="hint" style="flex-basis:100%;margin:4px 0 0">Elige turno y toca los d\u00edas. Quita \u201cEditar\u201d para apuntar servicios reales.</span>';}return h;}
 function bindEsp(){const nb=document.getElementById("cal_new");if(nb)nb.onclick=()=>openEspSheet(true);const eb=document.getElementById("cal_edit");if(eb)eb.onclick=()=>{calEdit=!calEdit;render();};const rn=document.getElementById("cal_espname");if(rn)rn.onclick=()=>openEspSheet(false);document.querySelectorAll(".calpal button").forEach(b=>b.onclick=()=>{calPaint=b.dataset.c;render();});}
 function openEspSheet(isNew){const cur=isNew?null:espCur();openSheet(`<div class="grab"></div><h2>${isNew?"Nuevo calendario especial":"Calendario especial"}</h2>
-  <div class="fields"><div class="field"><label>Nombre</label><input id="esp_name" value="${cur?(cur.name||"").replace(/"/g,"&quot;"):""}" placeholder="ej. 76-Mod"/></div></div>
+  <div class="fields"><div class="field"><label>Nombre</label><input id="esp_name" value="${cur?(cur.name||"").replace(/"/g,"&quot;"):""}" placeholder="ej. 76-Mod"/></div><div class="field"><label>Jornada</label><select id="esp_jor"><option value="100" ${(!cur||cur.jor!=="50")?"selected":""}>100% &mdash; 7,75 h (mínimo 7 h)</option><option value="50" ${(cur&&cur.jor==="50")?"selected":""}>50% &mdash; 3,875 h (sin mínimo)</option></select></div></div>
   <div class="actions">${isNew?"":'<button class="btn danger" id="esp_del">Borrar</button>'}<button class="btn ghost" id="esp_cancel">Cancelar</button><button class="btn primary" id="esp_ok">${isNew?"Crear":"Guardar"}</button></div>`);
   document.getElementById("esp_cancel").onclick=closeSheet;
-  document.getElementById("esp_ok").onclick=()=>{const nm=(val("esp_name")||"").trim();if(isNew){espList().push({name:nm||("Especial "+(espList().length+1)),codes:"D".repeat(365)});CAL_TYPES.ESP.n=espList().length;calGrp=espList().length;calEdit=true;}else{espCur().name=nm||espCur().name;}espSave();closeSheet();render();};
+  document.getElementById("esp_ok").onclick=()=>{const nm=(val("esp_name")||"").trim();if(isNew){espList().push({name:nm||("Especial "+(espList().length+1)),codes:"D".repeat(365),jor:(val("esp_jor")||"100")});CAL_TYPES.ESP.n=espList().length;calGrp=espList().length;calEdit=true;}else{espCur().name=nm||espCur().name;espCur().jor=(val("esp_jor")||"100");}espSave();closeSheet();render();};
   const del=document.getElementById("esp_del");if(del)del.onclick=()=>{if(espList().length<=1){toast("Debe quedar al menos uno");return;}espList().splice(calGrp-1,1);if(calGrp>espList().length)calGrp=espList().length;CAL_TYPES.ESP.n=espList().length;espSave();closeSheet();render();};}
 function calDayTap(f){if(calType==="ESP"&&calEdit){const p=f.split("-").map(Number);const idx=dayIndex(p[1]-1,p[2]);const cs=espCur().codes.split("");cs[idx]=calPaint;espCur().codes=cs.join("");espSave();renderCalGrid();}else openCalDia(f);}
 function calLoad(){try{const s=JSON.parse(localStorage.getItem(CAL_CFG));if(s&&typeof s==="object")return s;}catch(e){}return{type:"100",grp:1,off:0};}
@@ -196,7 +196,7 @@ function renderCalGrid(){
   }
   document.getElementById("cal_grid").innerHTML=html;
   document.querySelectorAll(".calday:not(.empty)").forEach(el=>el.onclick=()=>calDayTap(el.dataset.f));
-  document.getElementById("cal_stats").innerHTML=(calType==="ESP"?("Especial &middot; <b>"+((espCur().name)||calGrp)+"</b> &middot; "):(CAL_TYPES[calType].label+" &middot; grupo <b>"+calGrp+"</b> &middot; "))+CAL_MFULL[m]+": "+mC+" ma&ntilde;ana, "+tC+" tarde";
+  document.getElementById("cal_stats").innerHTML=(calType==="ESP"?("Especial &middot; <b>"+((espCur().name)||calGrp)+"</b> &middot; jornada "+(espCur().jor==="50"?"50%":"100%")+" &middot; "):(CAL_TYPES[calType].label+" &middot; grupo <b>"+calGrp+"</b> &middot; "))+CAL_MFULL[m]+": "+mC+" ma&ntilde;ana, "+tC+" tarde";
   const leg=[["var(--m)","Ma&ntilde;ana"],["var(--t)","Tarde"],["var(--sun)","Dom. trab."],["var(--d)","D franqueo"],["var(--v)","V vacac."],["var(--fnr)","FNR festivo"]];
   document.getElementById("cal_legend").innerHTML=leg.map(x=>"<span><i style='background:"+x[0]+"'></i>"+x[1]+"</span>").join("")+"<span><i class='apdot'></i>Apuntado</span>";
 }
@@ -243,7 +243,11 @@ function hhmm(dec){return (Math.round(dec*100)/100).toFixed(2).replace(".",",")+
 function tLabel(t){return t==='1'?"T1":t==='2'?"T2":"Part";}
 
 const JOR_STD=7.75,JOR_MIN=7;
-function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0;for(const e of state.registro){if(!inPeriod(e.fecha))continue;ndias++;const c=diaCalc(diaTramos(e));horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,JOR_MIN)-JOR_STD;const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias};}
+/* Jornada segun contrato: 50% = media jornada y sin minimo garantizado */
+function jorTipo(){if(typeof calType==="undefined")return "100";if(calType==="ESP"){try{return (espCur().jor==="50")?"50":"100";}catch(e){return "100";}}return (calType==="50")?"50":"100";}
+function jorStd(){return jorTipo()==="50"?3.875:JOR_STD;}
+function jorMin(){return jorTipo()==="50"?0:JOR_MIN;}
+function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0;for(const e of state.registro){if(!inPeriod(e.fecha))continue;ndias++;const c=diaCalc(diaTramos(e));horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias};}
 function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d).toFixed(2).replace(".",",")+" h";}
 
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
