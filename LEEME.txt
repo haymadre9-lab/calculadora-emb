@@ -1,6 +1,21 @@
-PWA Calculadora EMB
+Turnos + Calc EMB - PWA (version 1.0)
 
-Sube TODO el contenido de esta carpeta a un repo de GitHub Pages (p.ej. calculadora-emb).
-Quedará en https://haymadre9-lab.github.io/calculadora-emb/
-En el movil: abrir esa URL en Chrome -> menu -> Anadir a pantalla de inicio.
-Para actualizar: re-sube index.html (y sube el numero de version en sw.js si quieres forzar refresco).
+PRIMERA VEZ
+1) Crea un repositorio NUEVO y PUBLICO en GitHub. El nombre NO se podra
+   cambiar despues sin que todos pierdan sus datos. Ej: turnos-calc
+2) Sube TODOS estos archivos a la RAIZ del repo (los archivos sueltos,
+   NO la carpeta): index.html, manifest.webmanifest, sw.js y los 4 icon-*.png
+3) Settings > Pages > Deploy from a branch > main > / (root) > Save.
+4) Espera 1-2 min y abre https://haymadre9-lab.github.io/turnos-calc/
+   (respeta mayusculas/minusculas del nombre del repo)
+5) En el movil: menu del navegador > Anadir a pantalla de inicio.
+
+ACTUALIZACIONES
+- Sube el index.html nuevo al MISMO repo.
+- IMPORTANTE: cambia la version del cache en sw.js (turnoscalc-emb-vX)
+  o los companeros seguiran viendo la version antigua.
+- Los datos de cada usuario se mantienen mientras la URL no cambie.
+
+COPIA DE SEGURIDAD
+- Resumen > Exportar > Compartir/Guardar o Copiar.
+- Para restaurar: Resumen > Importar (reemplaza TODO lo que haya).
