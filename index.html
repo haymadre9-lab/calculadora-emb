@@ -114,7 +114,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="2.0";
+const APP_VER="2.2";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -200,7 +200,7 @@ function renderCalGrid(){
     else if(!code){bg="var(--surface)";tx="var(--hint)";}
     else{const c=CAL_COLORS[show]||["#eee","#333"];bg=c[0];tx=c[1];}
     const f=calFecha(m,d);const reg=calRegFor(f);let sub="",apcls="";
-    if(reg){if(reg.fod){sub="<span class='calsub' style='color:var(--dieta)'>FOD</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
+    if(reg){const _rk=espDia(reg);if(_rk){sub="<span class='calsub' style='color:"+ESPD[_rk].cor+"'>"+(_rk==="FOD"?"FOD":_rk==="ENF"?"Baja":"M\u00e9dico")+"</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
     const isSel=calMulti&&calSel.includes(f);const isT=(calToday.getFullYear()===calYear&&calToday.getMonth()===m&&calToday.getDate()===d);
     html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
   }
@@ -248,6 +248,8 @@ function periodFromDate(f){const d=new Date(f+"T12:00:00");let m=d.getMonth(),y=
 let _codCache={};
 function codesOfYear(y){const k=y+"|"+calType+"|"+calGrp;if(calType!=="ESP"&&_codCache[k])return _codCache[k];const _s=calYear;calYear=y;let r=null;try{r=calCodes();}catch(e){r=null;}calYear=_s;if(calType!=="ESP")_codCache[k]=r;return r;}
 function codeForFecha(f){if(!f||f.length<10)return null;const y=+f.slice(0,4),m=+f.slice(5,7)-1,d=+f.slice(8,10);const c=codesOfYear(y);return (c&&c[m])?c[m][d-1]||null:null;}
+const ESPD={FOD:{lbl:"FOD \u2014 fiesta por otro d\u00eda",cor:"var(--dieta)",bg:"var(--dieta-soft)",bd:"#BFD8B6",resta:true},ENF:{lbl:"Enfermo (baja)",cor:"var(--emb)",bg:"var(--emb-soft)",bd:"#EFCACA",resta:false,jornada:true},MED:{lbl:"M\u00e9dico",cor:"var(--noct)",bg:"var(--noct-soft)",bd:"#C5CAE9",resta:false}};
+function espDia(e){return (e&&(e.esp||(e.fod?"FOD":null)))||null;}
 function tipoForDate(f){if(codeForFecha(f)==="FNR")return "Fest";const d=new Date(f+"T12:00:00").getDay();return d===6?"Sab":d===0?"Fest":"Lab";}
 function toMin(h){if(!h)return null;const[a,b]=h.split(":").map(Number);return a*60+b;}
 function spanMin(i,f){const a=toMin(i),b=toMin(f);if(a==null||b==null)return 0;return b>=a?b-a:b+1440-a;}
@@ -266,9 +268,9 @@ const JOR_STD=7.75,JOR_MIN=7;
 function jorTipo(){if(typeof calType==="undefined")return "100";if(calType==="ESP"){try{return (espCur().jor==="50")?"50":"100";}catch(e){return "100";}}return (calType==="50")?"50":"100";}
 function jorStd(){return jorTipo()==="50"?3.875:JOR_STD;}
 function jorMin(){return jorTipo()==="50"?0:JOR_MIN;}
-function totalAcum(){let a=0;for(const e of state.registro){if(e.fod){a-=jorStd();continue;}const c=diaCalc(diaTramos(e));a+=Math.max(c.horas,jorMin())-jorStd();}return a+(+state.adj||0);}
-function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0,nsab=0,ndom=0,nfod=0,nfr=0;
-for(const e of state.registro){if(!inPeriod(e.fecha))continue;if(e.fod){acum-=jorStd();nfod++;continue;}ndias++;const c=diaCalc(diaTramos(e));if(c.horas>0){const _w=new Date(e.fecha+"T12:00:00").getDay();const _c=codeForFecha(e.fecha);if(_c==="FNR")ndom++;else if(_w===6)nsab++;else if(_w===0)ndom++;if(_c==="D")nfr++;}horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias,nsab,ndom,nfod,nfr};}
+function totalAcum(){let a=0;for(const e of state.registro){const _k=espDia(e);if(_k){if(ESPD[_k].resta)a-=jorStd();continue;}const c=diaCalc(diaTramos(e));a+=Math.max(c.horas,jorMin())-jorStd();}return a+(+state.adj||0);}
+function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0,nsab=0,ndom=0,nfod=0,nfr=0,nenf=0,nmed=0;
+for(const e of state.registro){if(!inPeriod(e.fecha))continue;const _k=espDia(e);if(_k){if(ESPD[_k].resta)acum-=jorStd();if(ESPD[_k].jornada){horas+=jorStd();ndias++;}if(_k==="FOD")nfod++;else if(_k==="ENF")nenf++;else if(_k==="MED")nmed++;continue;}ndias++;const c=diaCalc(diaTramos(e));if(c.horas>0){const _w=new Date(e.fecha+"T12:00:00").getDay();const _c=codeForFecha(e.fecha);if(_c==="FNR")ndom++;else if(_w===6)nsab++;else if(_w===0)ndom++;if(_c==="D")nfr++;}horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias,nsab,ndom,nfod,nfr,nenf,nmed};}
 function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d).toFixed(2).replace(".",",")+" h";}
 
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
@@ -390,7 +392,9 @@ function viewResumen(){const t=periodTotals();const tot=totalAcum();return `<div
   <div class="bigrow"><span class="k">Domingos y festivos<br><span class="hint" style="font-weight:600">incluye FNR trabajados</span></span><span class="v">${t.ndom}</span></div>
   <div class="bigrow"><span class="k">Horas nocturnas</span><span class="v">${hhmm(t.noct)}</span></div>
   <div class="bigrow"><span class="k">Días trabajados</span><span class="v">${t.ndias}</span></div>
-  <div class="bigrow"><span class="k">FOD (fiesta por otro día)</span><span class="v">${t.nfod}</span></div></div>
+  <div class="bigrow"><span class="k">FOD (fiesta por otro día)</span><span class="v">${t.nfod}</span></div>
+  <div class="bigrow"><span class="k">Días de baja (enfermo)</span><span class="v">${t.nenf}</span></div>
+  <div class="bigrow"><span class="k">Días de médico</span><span class="v">${t.nmed}</span></div></div>
   <div class="card"><div class="bigrow"><span class="k">Desayunos</span><span class="v">${t.nd}</span></div>
   <div class="bigrow"><span class="k">Comidas</span><span class="v">${t.nc}</span></div>
   <div class="bigrow"><span class="k">Cenas</span><span class="v">${t.nce}</span></div></div>
@@ -402,7 +406,7 @@ function viewDias(){
   const list=state.registro.filter(e=>inPeriod(e.fecha)).sort((a,b)=>a.fecha<b.fecha?-1:1);
   if(!list.length)return `<div class="empty">No hay días en este período.<br>Pulsa “+ Añadir día”.</div>`;
   let h="<div class='card'>";
-  for(const e of list){if(e.fod){const dt2=new Date(e.fecha+"T12:00:00"),dn2=["DO","LU","MA","MI","JU","VI","SA"][dt2.getDay()];h+=`<div class="diarow" data-ed="${e.id}"><div class="dleft"><div class="dfecha">${dn2} ${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</div><div class="dlab" style="color:var(--dieta);font-weight:800">FOD \u2014 fiesta por otro d\u00eda</div></div><div class="dright"><div class="dhoras" style="color:var(--emb)">${fmtSaldo(-jorStd())}</div></div></div>`;continue;}const c=diaCalc(diaTramos(e));const d=e.dietas||{};
+  for(const e of list){const _k=espDia(e);if(_k){const dt2=new Date(e.fecha+"T12:00:00"),dn2=["DO","LU","MA","MI","JU","VI","SA"][dt2.getDay()];h+=`<div class="diarow" data-ed="${e.id}"><div class="dleft"><div class="dfecha">${dn2} ${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</div><div class="dlab" style="color:${ESPD[_k].cor};font-weight:800">${ESPD[_k].lbl}</div></div><div class="dright"><div class="dhoras" style="color:${ESPD[_k].resta?"var(--emb)":"var(--ink)"}">${ESPD[_k].resta?fmtSaldo(-jorStd()):(ESPD[_k].jornada?hhmm(jorStd()):"")}</div></div></div>`;continue;}const c=diaCalc(diaTramos(e));const d=e.dietas||{};
     const dt=new Date(e.fecha+"T12:00:00"),dn=["DO","LU","MA","MI","JU","VI","SA"][dt.getDay()];
     let chips="";if(c.noct>0.01)chips+="<span class='chip n'>noct "+hhmm(c.noct)+"</span>";
     if(d.desayuno)chips+="<span class='chip di'>Des</span>";if(d.comida)chips+="<span class='chip di'>Com</span>";if(d.cena)chips+="<span class='chip di'>Cen</span>";
@@ -444,10 +448,10 @@ function editDia(id,fecha){
     <div id="dietwrap"></div>
     <div class="actions">${id?'<button class="btn danger" id="e_del">Borrar</button>':''}<button class="btn ghost" id="e_cancel">Cancelar</button><button class="btn primary" id="e_save">Guardar</button></div>`);
   const fTipo=document.getElementById("f_tipo"),fFecha=document.getElementById("f_fecha");
-  function fillTipos(){const L=Object.assign({},TIPOL,{FOD:"FOD \u2014 fiesta por otro d\u00eda"});fTipo.innerHTML=["Lab","Sab","Fest","FOD"].map(t=>`<option value="${t}" ${t===(E.fod?"FOD":E.tipo)?"selected":""}>${L[t]}</option>`).join("");}
+  function fillTipos(){const L=Object.assign({},TIPOL);Object.keys(ESPD).forEach(k=>L[k]=ESPD[k].lbl);const cur=espDia(E)||E.tipo;fTipo.innerHTML=["Lab","Sab","Fest","FOD","ENF","MED"].map(t=>`<option value="${t}" ${t===cur?"selected":""}>${L[t]}</option>`).join("");}
   fillTipos();
   fFecha.onchange=()=>{E.fecha=fFecha.value;if(!id){E.tipo=tipoForDate(E.fecha);fillTipos();}renderBloques();};
-  fTipo.onchange=()=>{if(fTipo.value==="FOD"){E.fod=true;E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;renderBloques();return;}E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
+  fTipo.onchange=()=>{if(ESPD[fTipo.value]){E.esp=fTipo.value;E.fod=(fTipo.value==="FOD");E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;renderBloques();return;}E.esp=null;E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
   function fillJC(){const g=document.getElementById("jg").value;const j=jorGet(g);const ks=Object.keys(j).sort();const jc=document.getElementById("jc");jc.innerHTML=ks.length?ks.map(k=>`<option value="${k}">${k}</option>`).join(""):'<option value="">(pendiente)</option>';}
   document.getElementById("jg").onchange=fillJC;fillJC();
   document.getElementById("jload").onclick=()=>{const g=document.getElementById("jg").value,c=document.getElementById("jc").value;const j=jorGet(g);if(!c||!j[c]){toast("No hay datos de esa jornada");return;}E.bloques=j[c].map(t=>({man:{l:t[0],ini:t[1],fin:t[2]}}));manualDiet=false;E.dietas=null;renderBloques();toast("Jornada "+c+" cargada");};
@@ -458,7 +462,7 @@ function editDia(id,fecha){
   if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();closeSheet();render();toast("Día borrado");};
   document.getElementById("e_save").onclick=()=>{
     E.fecha=fFecha.value;if(!E.fecha){toast("Pon la fecha");return;}
-    if(E.fod){E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab="FOD";}
+    if(espDia(E)){const k=espDia(E);E.esp=k;E.fod=(k==="FOD");E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab=ESPD[k].lbl;}
     else{const tr=diaTramos(E);if(!tr.length){toast("Falta el horario de alg\u00fan servicio");return;}
     E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};}
     if(!E.id)E.id=uid();
@@ -504,7 +508,7 @@ function openSaveServ(i){
 }
 function renderBloques(){
   const cont=document.getElementById("bloques");
-  if(E.fod){cont.innerHTML=`<div class="blq" style="background:var(--dieta-soft);border-color:#BFD8B6"><div style="font-size:14px;font-weight:800;color:var(--dieta)">FOD \u2014 Fiesta por otro d\u00eda</div><div class="hint" style="margin:4px 0 0">No se trabaja. Descuenta <b>${hhmm(jorStd())}</b> del saldo acumulado.</div></div>`;return;}
+  const _ed=espDia(E);if(_ed){const z=ESPD[_ed];cont.innerHTML=`<div class="blq" style="background:${z.bg};border-color:${z.bd}"><div style="font-size:14px;font-weight:800;color:${z.cor}">${z.lbl}</div><div class="hint" style="margin:4px 0 0">${z.resta?("No se trabaja. Descuenta <b>"+hhmm(jorStd())+"</b> del saldo acumulado."):z.jornada?("Cuenta como d\u00eda trabajado y suma <b>"+hhmm(jorStd())+"</b> de jornada (saldo neutro)."):"No suma ni resta. Solo queda registrado."}</div></div>`;return;}
   cont.innerHTML=E.bloques.map((b,i)=>{
     const rm=E.bloques.length>1?`<button class="rm" data-rm="${i}">&times;</button>`:"";
     const tramos=bloqueTramos(b,E.tipo).map(x=>x[0]+"–"+x[1]).join("  +  ")||"—";
