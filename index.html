@@ -114,7 +114,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="1.9";
+const APP_VER="2.0";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -245,7 +245,10 @@ function periodLabel(p){const s=periodStart(p),e=periodEnd(p);return"26 "+MN[s.g
 function shiftPeriod(d){let m=period.m+d,y=period.y;while(m>11){m-=12;y++;}while(m<0){m+=12;y--;}period={y,m};}
 function inPeriod(f){const d=new Date(f+"T12:00:00");return d>=periodStart(period)&&d<=periodEnd(period);}
 function periodFromDate(f){const d=new Date(f+"T12:00:00");let m=d.getMonth(),y=d.getFullYear();if(d.getDate()>=26){m++;if(m>11){m=0;y++;}}return{y,m};}
-function tipoForDate(f){const d=new Date(f+"T12:00:00").getDay();return d===6?"Sab":d===0?"Fest":"Lab";}
+let _codCache={};
+function codesOfYear(y){const k=y+"|"+calType+"|"+calGrp;if(calType!=="ESP"&&_codCache[k])return _codCache[k];const _s=calYear;calYear=y;let r=null;try{r=calCodes();}catch(e){r=null;}calYear=_s;if(calType!=="ESP")_codCache[k]=r;return r;}
+function codeForFecha(f){if(!f||f.length<10)return null;const y=+f.slice(0,4),m=+f.slice(5,7)-1,d=+f.slice(8,10);const c=codesOfYear(y);return (c&&c[m])?c[m][d-1]||null:null;}
+function tipoForDate(f){if(codeForFecha(f)==="FNR")return "Fest";const d=new Date(f+"T12:00:00").getDay();return d===6?"Sab":d===0?"Fest":"Lab";}
 function toMin(h){if(!h)return null;const[a,b]=h.split(":").map(Number);return a*60+b;}
 function spanMin(i,f){const a=toMin(i),b=toMin(f);if(a==null||b==null)return 0;return b>=a?b-a:b+1440-a;}
 function nightAbs(a,b){let t=0;for(const[w0,w1]of NIGHT)t+=Math.max(0,Math.min(b,w1)-Math.max(a,w0));return t;}
@@ -264,9 +267,8 @@ function jorTipo(){if(typeof calType==="undefined")return "100";if(calType==="ES
 function jorStd(){return jorTipo()==="50"?3.875:JOR_STD;}
 function jorMin(){return jorTipo()==="50"?0:JOR_MIN;}
 function totalAcum(){let a=0;for(const e of state.registro){if(e.fod){a-=jorStd();continue;}const c=diaCalc(diaTramos(e));a+=Math.max(c.horas,jorMin())-jorStd();}return a+(+state.adj||0);}
-function codesOfYear(y){const _s=calYear;calYear=y;let r=null;try{r=calCodes();}catch(e){r=null;}calYear=_s;return r;}
 function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0,nsab=0,ndom=0,nfod=0,nfr=0;
-  const _cache={};for(const e of state.registro){if(!inPeriod(e.fecha))continue;if(e.fod){acum-=jorStd();nfod++;continue;}ndias++;const c=diaCalc(diaTramos(e));if(c.horas>0){const _w=new Date(e.fecha+"T12:00:00").getDay();if(_w===6)nsab++;else if(_w===0)ndom++;const _y=+e.fecha.slice(0,4);if(!(_y in _cache))_cache[_y]=codesOfYear(_y);const _cd=_cache[_y];if(_cd){const _m=+e.fecha.slice(5,7)-1,_d=+e.fecha.slice(8,10);const _c=_cd[_m]?_cd[_m][_d-1]:null;if(_c==="D")nfr++;}}horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias,nsab,ndom,nfod,nfr};}
+for(const e of state.registro){if(!inPeriod(e.fecha))continue;if(e.fod){acum-=jorStd();nfod++;continue;}ndias++;const c=diaCalc(diaTramos(e));if(c.horas>0){const _w=new Date(e.fecha+"T12:00:00").getDay();const _c=codeForFecha(e.fecha);if(_c==="FNR")ndom++;else if(_w===6)nsab++;else if(_w===0)ndom++;if(_c==="D")nfr++;}horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias,nsab,ndom,nfod,nfr};}
 function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d).toFixed(2).replace(".",",")+" h";}
 
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
@@ -385,7 +387,7 @@ function viewResumen(){const t=periodTotals();const tot=totalAcum();return `<div
   <div class="bigrow"><span class="k">Horas acumuladas (saldo)</span><span class="v" style="color:${t.acum>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(t.acum)}</span></div>
   <div class="bigrow"><span class="k">Franqueos trabajados<br><span class="hint" style="font-weight:600">descansos que has trabajado</span></span><span class="v" style="color:var(--noct)">${t.nfr}</span></div>
   <div class="bigrow"><span class="k">S\u00e1bados trabajados</span><span class="v">${t.nsab}</span></div>
-  <div class="bigrow"><span class="k">Domingos trabajados</span><span class="v">${t.ndom}</span></div>
+  <div class="bigrow"><span class="k">Domingos y festivos<br><span class="hint" style="font-weight:600">incluye FNR trabajados</span></span><span class="v">${t.ndom}</span></div>
   <div class="bigrow"><span class="k">Horas nocturnas</span><span class="v">${hhmm(t.noct)}</span></div>
   <div class="bigrow"><span class="k">Días trabajados</span><span class="v">${t.ndias}</span></div>
   <div class="bigrow"><span class="k">FOD (fiesta por otro día)</span><span class="v">${t.nfod}</span></div></div>
