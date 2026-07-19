@@ -86,6 +86,7 @@ header h1{font-size:17px;font-weight:700;margin:0;}
 .calday .callab{flex:1;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;}
 .calday .calsub{font-size:10px;font-weight:800;text-align:center;background:rgba(255,255,255,.7);color:var(--emb);border-radius:5px;line-height:1.35;margin-top:1px;}
 .calday.today{box-shadow:0 0 0 2px var(--ink);}
+.calday.selmark{outline:3px solid var(--noct);outline-offset:-3px;}
 .calday.apunt{box-shadow:inset 0 0 0 2px var(--emb);}
 .calday.today.apunt{box-shadow:0 0 0 2px var(--ink),inset 0 0 0 2px var(--emb);}
 .calhoy{text-align:center;margin:10px 0;}
@@ -113,7 +114,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="1.5";
+const APP_VER="1.6";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -153,7 +154,8 @@ function openEspSheet(isNew){const cur=isNew?null:espCur();openSheet(`<div class
   document.getElementById("esp_cancel").onclick=closeSheet;
   document.getElementById("esp_ok").onclick=()=>{const nm=(val("esp_name")||"").trim();if(isNew){espList().push({name:nm||("Especial "+(espList().length+1)),codes:{},jor:(val("esp_jor")||"100")});CAL_TYPES.ESP.n=espList().length;calGrp=espList().length;calEdit=true;}else{espCur().name=nm||espCur().name;espCur().jor=(val("esp_jor")||"100");}espSave();closeSheet();render();};
   const del=document.getElementById("esp_del");if(del)del.onclick=()=>{if(espList().length<=1){toast("Debe quedar al menos uno");return;}espList().splice(calGrp-1,1);if(calGrp>espList().length)calGrp=espList().length;CAL_TYPES.ESP.n=espList().length;espSave();closeSheet();render();};}
-function calDayTap(f){if(calType==="ESP"&&calEdit){const p=f.split("-").map(Number);const idx=dayIndex(p[1]-1,p[2]);const cs=espCodesFor(calYear).split("");cs[idx]=calPaint;espCur().codes[calYear]=cs.join("");espSave();renderCalGrid();}else openCalDia(f);}
+let calMulti=false,calSel=[];
+function calDayTap(f){if(calMulti){const i=calSel.indexOf(f);if(i>=0)calSel.splice(i,1);else calSel.push(f);renderCalGrid();const b=document.getElementById("cal_apl");if(b)b.textContent="Poner servicio ("+calSel.length+")";return;}if(calType==="ESP"&&calEdit){const p=f.split("-").map(Number);const idx=dayIndex(p[1]-1,p[2]);const cs=espCodesFor(calYear).split("");cs[idx]=calPaint;espCur().codes[calYear]=cs.join("");espSave();renderCalGrid();}else openCalDia(f);}
 function calLoad(){let s=null;try{s=JSON.parse(localStorage.getItem(CAL_CFG));}catch(e){}if(!s||typeof s!=="object")s={type:"100",grp:1,off:0,year:CAL_BASEYEAR};calYear=CAL_YEARS.includes(+s.year)?+s.year:CAL_BASEYEAR;return s;}
 function calSave(){try{localStorage.setItem(CAL_CFG,JSON.stringify({type:calType,grp:calGrp,off:calOff,year:calYear}));}catch(e){}}
 function hayRot(){return (calType==="ESP")||(calYear===CAL_BASEYEAR);}
@@ -172,7 +174,7 @@ function viewCalendario(){return `<div class="calpanel">
   <div class="calrow"><label class="callbl">A&ntilde;o</label><select id="cal_year">${CAL_YEARS.map(y=>`<option value="${y}" ${y===calYear?"selected":""}>${y}</option>`).join("")}</select><label class="callbl">Contrato</label><select id="cal_type">${Object.keys(CAL_TYPES).map(t=>`<option value="${t}" ${t===calType?"selected":""}>${CAL_TYPES[t].label}</option>`).join("")}</select></div>
   <div class="calrow"><label class="callbl">N&ordm; calendario</label><div class="calgrp"><button id="cal_gprev">&#8722;</button><input id="cal_grp" type="number" min="1" max="${CAL_TYPES[calType].n}" value="${calGrp}" inputmode="numeric"/><button id="cal_gnext">+</button></div>
   ${calType==="ESP"?espToolbar():`<span class="callbl" id="cal_toglbl">${CAL_TYPES[calType].rule==="week"?"1&ordf; semana":"Rotaci&oacute;n"}</span><div class="calseg"><button id="cal_segM" class="${calOff===0?"on":""}">Ma&ntilde;ana</button><button id="cal_segT" class="${calOff===1?"on":""}">Tarde</button></div>`}</div>
-  <div class="calrow"><span class="calstats" id="cal_stats"></span></div></div>
+  <div class="calrow"><button class="calmini${calMulti?" on":""}" id="cal_multi">${calMulti?"\u2713 Seleccionando":"\u2610 Elegir varios d\u00edas"}</button>${calMulti?`<button class="calmini" id="cal_apl">Poner servicio (${calSel.length})</button><button class="calmini" id="cal_clr">Limpiar</button>`:""}</div>  <div class="calrow"><span class="calstats" id="cal_stats"></span></div></div>
   <div class="calmonthbar"><button class="calnav" id="cal_prev">&#8249;</button><div class="calmtitle" id="cal_mtitle"></div><button class="calnav" id="cal_next">&#8250;</button></div>
   <div class="calbox"><div class="calwk" id="cal_wk"></div><div class="calgrid" id="cal_grid"></div></div>
   <div class="calhoy"><button class="calhoybtn" id="cal_hoy">Ir a hoy</button></div>
@@ -198,9 +200,9 @@ function renderCalGrid(){
     else if(!code){bg="var(--surface)";tx="var(--hint)";}
     else{const c=CAL_COLORS[show]||["#eee","#333"];bg=c[0];tx=c[1];}
     const f=calFecha(m,d);const reg=calRegFor(f);let sub="",apcls="";
-    if(reg){const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";apcls=" apunt";}
-    const isT=(calToday.getFullYear()===calYear&&calToday.getMonth()===m&&calToday.getDate()===d);
-    html+="<div class='calday"+(isT?" today":"")+apcls+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
+    if(reg){if(reg.fod){sub="<span class='calsub' style='color:var(--dieta)'>FOD</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
+    const isSel=calMulti&&calSel.includes(f);const isT=(calToday.getFullYear()===calYear&&calToday.getMonth()===m&&calToday.getDate()===d);
+    html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
   }
   document.getElementById("cal_grid").innerHTML=html;
   document.querySelectorAll(".calday:not(.empty)").forEach(el=>el.onclick=()=>calDayTap(el.dataset.f));
@@ -216,6 +218,9 @@ function bindCal(){
   document.getElementById("cal_grp").onchange=e=>setG(parseInt(e.target.value));
   document.getElementById("cal_gprev").onclick=()=>setG(calGrp-1);
   document.getElementById("cal_gnext").onclick=()=>setG(calGrp+1);
+  const _mb=document.getElementById("cal_multi");if(_mb)_mb.onclick=()=>{calMulti=!calMulti;if(!calMulti)calSel=[];render();};
+  const _cl=document.getElementById("cal_clr");if(_cl)_cl.onclick=()=>{calSel=[];render();};
+  const _ap=document.getElementById("cal_apl");if(_ap)_ap.onclick=()=>openAplicar();
   const _sm=document.getElementById("cal_segM");if(_sm)_sm.onclick=()=>{calOff=0;calSave();render();};
   const _st=document.getElementById("cal_segT");if(_st)_st.onclick=()=>{calOff=1;calSave();render();};bindEsp();
   document.getElementById("cal_prev").onclick=()=>{const av=CAL_TYPES[calType].months,i=av.indexOf(calMonth);if(i>0){calMonth=av[i-1];renderCalGrid();}};
@@ -258,12 +263,53 @@ const JOR_STD=7.75,JOR_MIN=7;
 function jorTipo(){if(typeof calType==="undefined")return "100";if(calType==="ESP"){try{return (espCur().jor==="50")?"50":"100";}catch(e){return "100";}}return (calType==="50")?"50":"100";}
 function jorStd(){return jorTipo()==="50"?3.875:JOR_STD;}
 function jorMin(){return jorTipo()==="50"?0:JOR_MIN;}
-function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0;for(const e of state.registro){if(!inPeriod(e.fecha))continue;ndias++;const c=diaCalc(diaTramos(e));horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias};}
+function totalAcum(){let a=0;for(const e of state.registro){if(e.fod){a-=jorStd();continue;}const c=diaCalc(diaTramos(e));a+=Math.max(c.horas,jorMin())-jorStd();}return a+(+state.adj||0);}
+function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0;for(const e of state.registro){if(!inPeriod(e.fecha))continue;ndias++;if(e.fod){acum-=jorStd();continue;}const c=diaCalc(diaTramos(e));horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias};}
 function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d).toFixed(2).replace(".",",")+" h";}
 
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
 function fallbackCopy(t){const ta=document.getElementById("exp_t");if(ta){ta.select();ta.setSelectionRange(0,99999);try{document.execCommand("copy");toast("Copiado");}catch(e){toast("Copia manual");}}}
-function bindBackup(){const e=document.getElementById("b_exp");if(!e)return;e.onclick=exportData;document.getElementById("b_imp").onclick=importData;}
+function bindBackup(){const e=document.getElementById("b_exp");if(!e)return;e.onclick=exportData;document.getElementById("b_imp").onclick=importData;
+  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;}
+function modal(html){const old=document.getElementById("mdlx");if(old)old.remove();const m=document.createElement("div");m.id="mdlx";
+  m.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;";
+  m.innerHTML=`<div style="background:var(--surface);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:14px 14px 20px;max-height:90vh;overflow:auto">${html}</div>`;
+  document.body.appendChild(m);m.onclick=ev=>{if(ev.target===m)m.remove();};return m;}
+function cerrarModal(){const m=document.getElementById("mdlx");if(m)m.remove();}
+function openAjuste(){
+  const calc=totalAcum()-(+state.adj||0), act=totalAcum();
+  modal(`<h2 style="margin:4px 0 6px;font-size:17px">Ajustar saldo total</h2>
+   <p class="hint" style="margin:0 0 8px">La app ha calculado <b>${fmtSaldo(calc)}</b> con los d\u00edas apuntados. Si tu saldo real es otro, esc\u00edbelo y se guarda la diferencia.</p>
+   <div class="fields"><div class="field"><label>Saldo real (h)</label><input id="aj_v" type="text" inputmode="decimal" value="${act.toFixed(2).replace(".",",")}" placeholder="ej. -12,50"></div></div>
+   <div class="actions"><button class="btn ghost" id="aj_no">Cancelar</button><button class="btn ghost" id="aj_rs">Quitar ajuste</button><button class="btn primary" id="aj_ok">Guardar</button></div>`);
+  document.getElementById("aj_no").onclick=cerrarModal;
+  document.getElementById("aj_rs").onclick=()=>{state.adj=0;save();cerrarModal();render();toast("Ajuste quitado");};
+  document.getElementById("aj_ok").onclick=()=>{const v=parseFloat((val("aj_v")||"").replace(",","."));if(isNaN(v)){toast("Pon un n\u00famero");return;}state.adj=Math.round((v-calc)*100)/100;save();cerrarModal();render();toast("Saldo total ajustado");};}
+function openAplicar(){
+  if(!calSel.length){toast("Elige d\u00edas en el calendario");return;}
+  const ls=lineasAll();
+  modal(`<h2 style="margin:4px 0 6px;font-size:17px">Poner servicio en ${calSel.length} d\u00eda${calSel.length===1?"":"s"}</h2>
+   <p class="hint" style="margin:0 0 8px">Se usar\u00e1 el horario seg\u00fan el tipo de cada d\u00eda (laborable, s\u00e1bado o festivo).</p>
+   <div class="fields"><div class="field"><label>L\u00ednea</label><select id="ap_l">${ls.map(l=>`<option value="${l}">${l}</option>`).join("")}</select></div>
+   <div class="field"><label>Servicio</label><select id="ap_s"></select></div></div>
+   <div class="fields"><div class="field"><label>Turno</label><select id="ap_t"><option value="1">Turno 1</option><option value="2">Turno 2</option><option value="P">Partida</option></select></div>
+   <div class="field"><label>&nbsp;</label><div class="hint" style="margin:0">Los d\u00edas ya apuntados se saltan</div></div></div>
+   <div class="actions"><button class="btn ghost" id="ap_no">Cancelar</button><button class="btn primary" id="ap_ok">Apuntar</button></div>`);
+  const fillS=()=>{const l=val("ap_l");const set=new Set();["Lab","Sab","Fest"].forEach(t=>servsFor(l,t).forEach(s=>set.add(s)));
+    document.getElementById("ap_s").innerHTML=[...set].sort().map(s=>`<option value="${s}">${s}</option>`).join("");};
+  fillS();document.getElementById("ap_l").onchange=fillS;
+  document.getElementById("ap_no").onclick=cerrarModal;
+  document.getElementById("ap_ok").onclick=()=>{
+    const l=val("ap_l"),s=val("ap_s"),tn=val("ap_t");let ok=0,skip=0,nod=0;
+    for(const f of calSel.slice().sort()){
+      if(state.registro.some(x=>x.fecha===f)){skip++;continue;}
+      const tp=tipoForDate(f),sd=catSd(l,tp,s);
+      if(!sd){nod++;continue;}
+      const b={linea:l,servicio:s,turno:tn,man:null};
+      const tr=bloqueTramos(b,tp); if(!tr.length){nod++;continue;}
+      state.registro.push({id:uid(),fecha:f,tipo:tp,bloques:[b],dietas:diaDietas(tr),lab:l+"\u00b7"+s});ok++;}
+    save();calSel=[];calMulti=false;cerrarModal();render();
+    toast("Apuntados "+ok+(skip?" \u00b7 "+skip+" ya ten\u00edan":"")+(nod?" \u00b7 "+nod+" sin horario":""));};}
 function backupName(){return "TurnosCalcEMB-"+new Date().toISOString().slice(0,10)+".json";}
 async function shareBackup(json){
   const fn=backupName();
@@ -332,7 +378,7 @@ function render(){
   else if(tab==="dias"){fab.style.display="";fab.textContent="+ Añadir día";v.innerHTML=viewDias();document.querySelectorAll("[data-eid]").forEach(el=>el.onclick=()=>editDia(el.dataset.eid));}
   else{fab.style.display="";fab.textContent=isGrupo(browseL)?"+ Nueva jornada":"+ Nuevo servicio";v.innerHTML=viewServicios();bindServicios();}
 }
-function viewResumen(){const t=periodTotals();return `<div class="card">
+function viewResumen(){const t=periodTotals();const tot=totalAcum();return `<div class="card"><div class="bigrow"><span class="k">Saldo TOTAL acumulado<br><span class="hint" style="font-weight:600">todos los per\u00edodos</span></span><span class="v" style="color:${tot>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(tot)}</span></div><div class="actions" style="margin-top:2px"><button class="btn ghost" id="adj_go">Ajustar saldo total</button></div></div><div class="card">
   <div class="bigrow"><span class="k">Horas trabajadas</span><span class="v">${hhmm(t.horas)}</span></div>
   <div class="bigrow"><span class="k">Horas acumuladas (saldo)</span><span class="v" style="color:${t.acum>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(t.acum)}</span></div>
   <div class="bigrow"><span class="k">Horas nocturnas</span><span class="v">${hhmm(t.noct)}</span></div>
@@ -348,7 +394,7 @@ function viewDias(){
   const list=state.registro.filter(e=>inPeriod(e.fecha)).sort((a,b)=>a.fecha<b.fecha?-1:1);
   if(!list.length)return `<div class="empty">No hay días en este período.<br>Pulsa “+ Añadir día”.</div>`;
   let h="<div class='card'>";
-  for(const e of list){const c=diaCalc(diaTramos(e));const d=e.dietas||{};
+  for(const e of list){if(e.fod){const dt2=new Date(e.fecha+"T12:00:00"),dn2=["DO","LU","MA","MI","JU","VI","SA"][dt2.getDay()];h+=`<div class="diarow" data-ed="${e.id}"><div class="dleft"><div class="dfecha">${dn2} ${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</div><div class="dlab" style="color:var(--dieta);font-weight:800">FOD \u2014 fiesta por otro d\u00eda</div></div><div class="dright"><div class="dhoras" style="color:var(--emb)">${fmtSaldo(-jorStd())}</div></div></div>`;continue;}const c=diaCalc(diaTramos(e));const d=e.dietas||{};
     const dt=new Date(e.fecha+"T12:00:00"),dn=["DO","LU","MA","MI","JU","VI","SA"][dt.getDay()];
     let chips="";if(c.noct>0.01)chips+="<span class='chip n'>noct "+hhmm(c.noct)+"</span>";
     if(d.desayuno)chips+="<span class='chip di'>Des</span>";if(d.comida)chips+="<span class='chip di'>Com</span>";if(d.cena)chips+="<span class='chip di'>Cen</span>";
@@ -390,10 +436,10 @@ function editDia(id,fecha){
     <div id="dietwrap"></div>
     <div class="actions">${id?'<button class="btn danger" id="e_del">Borrar</button>':''}<button class="btn ghost" id="e_cancel">Cancelar</button><button class="btn primary" id="e_save">Guardar</button></div>`);
   const fTipo=document.getElementById("f_tipo"),fFecha=document.getElementById("f_fecha");
-  function fillTipos(){const ts=tiposFor(E.bloques[0].linea).length?["Lab","Sab","Fest"]:["Lab","Sab","Fest"];fTipo.innerHTML=["Lab","Sab","Fest"].map(t=>`<option value="${t}" ${t===E.tipo?"selected":""}>${TIPOL[t]}</option>`).join("");}
+  function fillTipos(){const L=Object.assign({},TIPOL,{FOD:"FOD \u2014 fiesta por otro d\u00eda"});fTipo.innerHTML=["Lab","Sab","Fest","FOD"].map(t=>`<option value="${t}" ${t===(E.fod?"FOD":E.tipo)?"selected":""}>${L[t]}</option>`).join("");}
   fillTipos();
   fFecha.onchange=()=>{E.fecha=fFecha.value;if(!id){E.tipo=tipoForDate(E.fecha);fillTipos();}renderBloques();};
-  fTipo.onchange=()=>{E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
+  fTipo.onchange=()=>{if(fTipo.value==="FOD"){E.fod=true;E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;renderBloques();return;}E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
   function fillJC(){const g=document.getElementById("jg").value;const j=jorGet(g);const ks=Object.keys(j).sort();const jc=document.getElementById("jc");jc.innerHTML=ks.length?ks.map(k=>`<option value="${k}">${k}</option>`).join(""):'<option value="">(pendiente)</option>';}
   document.getElementById("jg").onchange=fillJC;fillJC();
   document.getElementById("jload").onclick=()=>{const g=document.getElementById("jg").value,c=document.getElementById("jc").value;const j=jorGet(g);if(!c||!j[c]){toast("No hay datos de esa jornada");return;}E.bloques=j[c].map(t=>({man:{l:t[0],ini:t[1],fin:t[2]}}));manualDiet=false;E.dietas=null;renderBloques();toast("Jornada "+c+" cargada");};
@@ -404,8 +450,9 @@ function editDia(id,fecha){
   if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();closeSheet();render();toast("Día borrado");};
   document.getElementById("e_save").onclick=()=>{
     E.fecha=fFecha.value;if(!E.fecha){toast("Pon la fecha");return;}
-    const tr=diaTramos(E);if(!tr.length){toast("Falta el horario de algún servicio");return;}
-    E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};
+    if(E.fod){E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab="FOD";}
+    else{const tr=diaTramos(E);if(!tr.length){toast("Falta el horario de alg\u00fan servicio");return;}
+    E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};}
     if(!E.id)E.id=uid();
     const idx=state.registro.findIndex(x=>x.id===E.id);
     if(idx>=0)state.registro[idx]=E;else state.registro.push(E);
@@ -449,6 +496,7 @@ function openSaveServ(i){
 }
 function renderBloques(){
   const cont=document.getElementById("bloques");
+  if(E.fod){cont.innerHTML=`<div class="blq" style="background:var(--dieta-soft);border-color:#BFD8B6"><div style="font-size:14px;font-weight:800;color:var(--dieta)">FOD \u2014 Fiesta por otro d\u00eda</div><div class="hint" style="margin:4px 0 0">No se trabaja. Descuenta <b>${hhmm(jorStd())}</b> del saldo acumulado.</div></div>`;return;}
   cont.innerHTML=E.bloques.map((b,i)=>{
     const rm=E.bloques.length>1?`<button class="rm" data-rm="${i}">&times;</button>`:"";
     const tramos=bloqueTramos(b,E.tipo).map(x=>x[0]+"–"+x[1]).join("  +  ")||"—";
