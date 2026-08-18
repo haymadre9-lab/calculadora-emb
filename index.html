@@ -114,7 +114,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="2.5";
+const APP_VER="2.6";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -169,7 +169,7 @@ const calMonIdx=(m,d)=>(calDow(m,d)+6)%7;
 const calPhaseOf=(m,d)=>{const blk=Math.floor((Date.UTC(calYear,m,d)-CAL_ANCHOR)/(7*CAL_DAY));return ((blk%2)+2+calOff)%2;};
 const calSwap=c=>c==="M"?"T":c==="T"?"M":c;
 function calBuildPhaseMap(){calPhaseMap={};if(!hayRot()||calType==="ESP")return;if(CAL_TYPES[calType].rule!=="stint")return;const s=CAL_MASTER[calType][String(calGrp)];let i=0,stint=-1,prev=false;for(const mo of CAL_TYPES[calType].months){for(let d=1;d<=CDIM(mo);d++){const code=CAL_EXP[s[i++]];const work=(code==="T");if(work&&!prev)stint++;if(work)calPhaseMap[(mo+1)+"-"+d]=((stint+calOff)%2);prev=work;}}}
-function calDayInfo(m,d,code){const rule=CAL_TYPES[calType].rule;if(rule==="cl"){const c=clFor(calYear,m,d);if(c.vacio)return{show:"CL15",ph:null,worked:false,cl:c.code};return{show:c.turno,ph:c.turno,worked:true,cl:c.code};}if(rule==="custom"){const w=(code==="M"||code==="T");return{show:code,ph:w?code:null,worked:w};}if(rule==="baked"){let worked=(code==="M"||code==="T");let show=worked?(calOff===1?calSwap(code):code):code;return{show,ph:worked?show:null,worked};}if(code==="T"){let p=(rule==="stint")?calPhaseMap[(m+1)+"-"+d]:calPhaseOf(m,d);const show=p===0?"M":"T";return{show,ph:show,worked:true};}return{show:code,ph:null,worked:false};}
+function calDayInfo(m,d,code){const rule=CAL_TYPES[calType].rule;if(rule==="cl"){const c=clFor(calYear,m,d);if(c.vacio)return{show:"",ph:null,worked:false,cl:c.code};return{show:c.turno,ph:c.turno,worked:true,cl:c.code};}if(rule==="custom"){const w=(code==="M"||code==="T");return{show:code,ph:w?code:null,worked:w};}if(rule==="baked"){let worked=(code==="M"||code==="T");let show=worked?(calOff===1?calSwap(code):code):code;return{show,ph:worked?show:null,worked};}if(code==="T"){let p=(rule==="stint")?calPhaseMap[(m+1)+"-"+d]:calPhaseOf(m,d);const show=p===0?"M":"T";return{show,ph:show,worked:true};}return{show:code,ph:null,worked:false};}
 const calPad=n=>(n<10?"0":"")+n;
 function calFecha(m,d){return calYear+"-"+calPad(m+1)+"-"+calPad(d);}
 function calRegFor(f){return state.registro.find(e=>e.fecha===f);}
@@ -205,7 +205,7 @@ function renderCalGrid(){
     const f=calFecha(m,d);const reg=calRegFor(f);let sub="",apcls="";
     if(reg){const _rk=espDia(reg);if(_rk){sub="<span class='calsub' style='color:"+ESPD[_rk].cor+"'>"+(_rk==="FOD"?"FOD":_rk==="ENF"?"Baja":"M\u00e9dico")+"</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
     const isSel=calMulti&&calSel.includes(f);const isT=(calToday.getFullYear()===calYear&&calToday.getMonth()===m&&calToday.getDate()===d);
-    html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'"+(calType==="3197"?" style='font-size:11px;font-weight:800'":"")+">"+(calType==="3197"?(cl||""):(code?show:""))+"</span>"+sub+"</div>";
+    html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
   }
   document.getElementById("cal_grid").innerHTML=html;
   document.querySelectorAll(".calday:not(.empty)").forEach(el=>el.onclick=()=>calDayTap(el.dataset.f));
