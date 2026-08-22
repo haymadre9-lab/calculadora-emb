@@ -114,7 +114,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="2.6";
+const APP_VER="2.7";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -232,7 +232,7 @@ function bindCal(){
 }
 function openCalDia(f){const reg=calRegFor(f);if(reg)editDia(reg.id);else editDia(null,f);}
 
-function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};return s;}}catch(e){}return{registro:[],serv:{},jor:{}};}
+function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};if(!s.carry)s.carry={};return s;}}catch(e){}return{registro:[],serv:{},jor:{},carry:{}};}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function lineasAll(){const ex=Object.keys(state.serv||{}).map(k=>k.split("|")[0]);return [...new Set([...Object.keys(CAT),...ex])].sort();}
@@ -279,7 +279,8 @@ function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d)
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
 function fallbackCopy(t){const ta=document.getElementById("exp_t");if(ta){ta.select();ta.setSelectionRange(0,99999);try{document.execCommand("copy");toast("Copiado");}catch(e){toast("Copia manual");}}}
 function bindBackup(){const e=document.getElementById("b_exp");if(!e)return;e.onclick=exportData;document.getElementById("b_imp").onclick=importData;
-  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;}
+  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;const cy=document.getElementById("carry_go");if(cy)cy.onclick=openCarry;}
+function openCarry(){const act=(state.carry&&state.carry[calYear]!=null)?state.carry[calYear]:null;modal(`<h2 style="margin:4px 0 6px;font-size:17px">Horas que vienen de ${calYear-1}</h2><p class="hint" style="margin:0 0 8px">Solo informativo, para llevar el control de un a\u00f1o a otro. No afecta a los c\u00e1lculos.</p><div class="fields"><div class="field"><label>Horas (a\u00f1o ${calYear-1})</label><input id="cy_v" type="text" inputmode="decimal" value="${act!=null?String(act).replace(".",","):""}" placeholder="ej. +12,50 o -8"></div></div><div class="actions"><button class="btn ghost" id="cy_no">Cancelar</button><button class="btn ghost" id="cy_rs">Borrar</button><button class="btn primary" id="cy_ok">Guardar</button></div>`);document.getElementById("cy_no").onclick=cerrarModal;document.getElementById("cy_rs").onclick=()=>{if(state.carry)delete state.carry[calYear];save();cerrarModal();render();toast("Borrado");};document.getElementById("cy_ok").onclick=()=>{const v=parseFloat((val("cy_v")||"").replace(",","."));if(isNaN(v)){toast("Pon un n\u00famero");return;}if(!state.carry)state.carry={};state.carry[calYear]=Math.round(v*100)/100;save();cerrarModal();render();toast("Guardado");};}
 function modal(html){const old=document.getElementById("mdlx");if(old)old.remove();const m=document.createElement("div");m.id="mdlx";
   m.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;";
   m.innerHTML=`<div style="background:var(--surface);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:14px 14px 20px;max-height:90vh;overflow:auto">${html}</div>`;
@@ -373,7 +374,7 @@ function doImport(d){
    <div class="actions"><button class="btn ghost" id="imp_no">Cancelar</button><button class="btn danger" id="imp_si">Sí, reemplazar</button></div>`);
   document.getElementById("imp_no").onclick=closeSheet;
   document.getElementById("imp_si").onclick=()=>{
-    state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{}};if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save();closeSheet();render();toast("Datos importados");
+    state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{},adj:d.adj||0,carry:d.carry||{}};if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save();closeSheet();render();toast("Datos importados");
   };
 }
 function render(){
@@ -387,7 +388,7 @@ function render(){
   else if(tab==="dias"){fab.style.display="";fab.textContent="+ Añadir día";v.innerHTML=viewDias();document.querySelectorAll("[data-eid]").forEach(el=>el.onclick=()=>editDia(el.dataset.eid));}
   else{fab.style.display="";fab.textContent=isGrupo(browseL)?"+ Nueva jornada":"+ Nuevo servicio";v.innerHTML=viewServicios();bindServicios();}
 }
-function viewResumen(){const t=periodTotals();const tot=totalAcum();return `<div class="card"><div class="bigrow"><span class="k">Saldo TOTAL acumulado<br><span class="hint" style="font-weight:600">todos los per\u00edodos</span></span><span class="v" style="color:${tot>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(tot)}</span></div><div class="actions" style="margin-top:2px"><button class="btn ghost" id="adj_go">Ajustar saldo total</button></div></div><div class="card">
+function viewResumen(){const t=periodTotals();const tot=totalAcum();return `<div class="card"><div class="bigrow"><span class="k">Saldo TOTAL acumulado<br><span class="hint" style="font-weight:600">todos los per\u00edodos</span></span><span class="v" style="color:${tot>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(tot)}</span></div><div class="bigrow"><span class="k">Vienen del a\u00f1o anterior<br><span class="hint" style="font-weight:600">${calYear-1} &middot; solo informativo</span></span><span class="v" style="color:var(--hint)">${(state.carry&&state.carry[calYear]!=null)?fmtSaldo(state.carry[calYear]):"\u2014"}</span></div><div class="actions" style="margin-top:2px"><button class="btn ghost" id="carry_go">A\u00f1o anterior</button><button class="btn ghost" id="adj_go">Ajustar saldo total</button></div></div><div class="card">
   <div class="bigrow"><span class="k">Horas trabajadas</span><span class="v">${hhmm(t.horas)}</span></div>
   <div class="bigrow"><span class="k">Horas acumuladas (saldo)</span><span class="v" style="color:${t.acum>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(t.acum)}</span></div>
   <div class="bigrow"><span class="k">Franqueos trabajados<br><span class="hint" style="font-weight:600">descansos que has trabajado</span></span><span class="v" style="color:var(--noct)">${t.nfr}</span></div>
