@@ -114,7 +114,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="2.7";
+const APP_VER="3.0";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -203,7 +203,7 @@ function renderCalGrid(){
     else if(!code){bg="var(--surface)";tx="var(--hint)";}
     else{const c=CAL_COLORS[show]||["#eee","#333"];bg=c[0];tx=c[1];}
     const f=calFecha(m,d);const reg=calRegFor(f);let sub="",apcls="";
-    if(reg){const _rk=espDia(reg);if(_rk){sub="<span class='calsub' style='color:"+ESPD[_rk].cor+"'>"+(_rk==="FOD"?"FOD":_rk==="ENF"?"Baja":"M\u00e9dico")+"</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
+    if(reg){const _rk=espDia(reg);if(_rk){sub="<span class='calsub' style='color:"+ESPD[_rk].cor+"'>"+(_rk==="FOD"?"FOD":_rk==="ENF"?"Baja":_rk==="MED"?"M\u00e9dico":"FNR")+"</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
     const isSel=calMulti&&calSel.includes(f);const isT=(calToday.getFullYear()===calYear&&calToday.getMonth()===m&&calToday.getDate()===d);
     html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
   }
@@ -251,9 +251,9 @@ function periodFromDate(f){const d=new Date(f+"T12:00:00");let m=d.getMonth(),y=
 let _codCache={};
 function codesOfYear(y){const k=y+"|"+calType+"|"+calGrp;if(calType!=="ESP"&&_codCache[k])return _codCache[k];const _s=calYear;calYear=y;let r=null;try{r=calCodes();}catch(e){r=null;}calYear=_s;if(calType!=="ESP")_codCache[k]=r;return r;}
 function codeForFecha(f){if(!f||f.length<10)return null;const y=+f.slice(0,4),m=+f.slice(5,7)-1,d=+f.slice(8,10);const c=codesOfYear(y);return (c&&c[m])?c[m][d-1]||null:null;}
-const ESPD={FOD:{lbl:"FOD \u2014 fiesta por otro d\u00eda",cor:"var(--dieta)",bg:"var(--dieta-soft)",bd:"#BFD8B6",resta:true},ENF:{lbl:"Enfermo (baja)",cor:"var(--emb)",bg:"var(--emb-soft)",bd:"#EFCACA",resta:false,jornada:true},MED:{lbl:"M\u00e9dico",cor:"var(--noct)",bg:"var(--noct-soft)",bd:"#C5CAE9",resta:false}};
+const ESPD={FOD:{lbl:"FOD \u2014 fiesta por otro d\u00eda",cor:"var(--dieta)",bg:"var(--dieta-soft)",bd:"#BFD8B6",resta:true},ENF:{lbl:"Enfermo (baja)",cor:"var(--emb)",bg:"var(--emb-soft)",bd:"#EFCACA",resta:false,jornada:true},MED:{lbl:"M\u00e9dico",cor:"var(--noct)",bg:"var(--noct-soft)",bd:"#C5CAE9",resta:false},FNR:{lbl:"FNR (fiesta en d\u00eda libre)",cor:"var(--hint)",bg:"var(--surface)",bd:"var(--line)",resta:false,libre:true}};
 function espDia(e){return (e&&(e.esp||(e.fod?"FOD":null)))||null;}
-function tipoForDate(f){if(codeForFecha(f)==="FNR")return "Fest";const d=new Date(f+"T12:00:00").getDay();return d===6?"Sab":d===0?"Fest":"Lab";}
+function tipoForDate(f){const d=new Date(f+"T12:00:00").getDay();return d===6?"Sab":d===0?"Fest":"Lab";}
 function toMin(h){if(!h)return null;const[a,b]=h.split(":").map(Number);return a*60+b;}
 function spanMin(i,f){const a=toMin(i),b=toMin(f);if(a==null||b==null)return 0;return b>=a?b-a:b+1440-a;}
 function nightAbs(a,b){let t=0;for(const[w0,w1]of NIGHT)t+=Math.max(0,Math.min(b,w1)-Math.max(a,w0));return t;}
@@ -273,7 +273,7 @@ function jorStd(){return jorTipo()==="50"?3.875:JOR_STD;}
 function jorMin(){return jorTipo()==="50"?0:JOR_MIN;}
 function totalAcum(){let a=0;for(const e of state.registro){const _k=espDia(e);if(_k){if(ESPD[_k].resta)a-=jorStd();continue;}const c=diaCalc(diaTramos(e));a+=Math.max(c.horas,jorMin())-jorStd();}return a+(+state.adj||0);}
 function periodTotals(){let horas=0,noct=0,acum=0,nd=0,nc=0,nce=0,ndias=0,nsab=0,ndom=0,nfod=0,nfr=0,nenf=0,nmed=0;
-for(const e of state.registro){if(!inPeriod(e.fecha))continue;const _k=espDia(e);if(_k){if(ESPD[_k].resta)acum-=jorStd();if(ESPD[_k].jornada){horas+=jorStd();ndias++;}if(_k==="FOD")nfod++;else if(_k==="ENF")nenf++;else if(_k==="MED")nmed++;continue;}ndias++;const c=diaCalc(diaTramos(e));if(c.horas>0){const _w=new Date(e.fecha+"T12:00:00").getDay();const _c=codeForFecha(e.fecha);if(_c==="FNR")ndom++;else if(_w===6)nsab++;else if(_w===0)ndom++;if(_c==="D")nfr++;}horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias,nsab,ndom,nfod,nfr,nenf,nmed};}
+for(const e of state.registro){if(!inPeriod(e.fecha))continue;const _k=espDia(e);if(_k){if(ESPD[_k].resta)acum-=jorStd();if(ESPD[_k].jornada){horas+=jorStd();ndias++;}if(_k==="FOD")nfod++;else if(_k==="ENF")nenf++;else if(_k==="MED")nmed++;continue;}ndias++;const c=diaCalc(diaTramos(e));if(c.horas>0){const _w=new Date(e.fecha+"T12:00:00").getDay();const _c=codeForFecha(e.fecha);if(_w===6)nsab++;else if(_w===0)ndom++;if(_c==="D")nfr++;}horas+=c.horas;noct+=c.noct;acum+=Math.max(c.horas,jorMin())-jorStd();const d=e.dietas||{};if(d.desayuno)nd++;if(d.comida)nc++;if(d.cena)nce++;}return{horas,noct,acum,nd,nc,nce,ndias,nsab,ndom,nfod,nfr,nenf,nmed};}
 function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d).toFixed(2).replace(".",",")+" h";}
 
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
@@ -444,10 +444,10 @@ function editDia(id,fecha){
     <div id="dietwrap"></div>
     <div class="actions">${id?'<button class="btn danger" id="e_del">Borrar</button>':''}<button class="btn ghost" id="e_cancel">Cancelar</button><button class="btn primary" id="e_save">Guardar</button></div>`);
   const fTipo=document.getElementById("f_tipo"),fFecha=document.getElementById("f_fecha");
-  function fillTipos(){const L=Object.assign({},TIPOL);Object.keys(ESPD).forEach(k=>L[k]=ESPD[k].lbl);const cur=espDia(E)||E.tipo;fTipo.innerHTML=["Lab","Sab","Fest","FOD","ENF","MED"].map(t=>`<option value="${t}" ${t===cur?"selected":""}>${L[t]}</option>`).join("");}
+  function fillTipos(){const L=Object.assign({},TIPOL);Object.keys(ESPD).forEach(k=>L[k]=ESPD[k].lbl);const cur=espDia(E)||E.tipo;fTipo.innerHTML=["Lab","Sab","Fest","FNR","FOD","ENF","MED"].map(t=>`<option value="${t}" ${t===cur?"selected":""}>${L[t]}</option>`).join("");}
   fillTipos();
   fFecha.onchange=()=>{E.fecha=fFecha.value;if(!id){E.tipo=tipoForDate(E.fecha);fillTipos();}renderBloques();};
-  fTipo.onchange=()=>{if(ESPD[fTipo.value]){E.esp=fTipo.value;E.fod=(fTipo.value==="FOD");E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;renderBloques();return;}E.esp=null;E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
+  fTipo.onchange=()=>{if(ESPD[fTipo.value]){E.esp=fTipo.value;E.fod=(fTipo.value==="FOD");E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;E.fnr=false;renderBloques();return;}E.esp=null;E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
   document.getElementById("addb").onclick=()=>{E.bloques.push({linea:E.bloques[E.bloques.length-1].linea,servicio:"",turno:"1",man:null});const b=E.bloques[E.bloques.length-1];const ss=servsFor(b.linea,E.tipo);b.servicio=ss[0]||"";const sd=catSd(b.linea,E.tipo,b.servicio);b.turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");renderBloques();};
   document.getElementById("e_cancel").onclick=closeSheet;
   if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();closeSheet();render();toast("Día borrado");};
@@ -499,7 +499,7 @@ function openSaveServ(i){
 }
 function renderBloques(){
   const cont=document.getElementById("bloques");
-  const _ed=espDia(E);if(_ed){const z=ESPD[_ed];cont.innerHTML=`<div class="blq" style="background:${z.bg};border-color:${z.bd}"><div style="font-size:14px;font-weight:800;color:${z.cor}">${z.lbl}</div><div class="hint" style="margin:4px 0 0">${z.resta?("No se trabaja. Descuenta <b>"+hhmm(jorStd())+"</b> del saldo acumulado."):z.jornada?("Cuenta como d\u00eda trabajado y suma <b>"+hhmm(jorStd())+"</b> de jornada (saldo neutro)."):"No suma ni resta. Solo queda registrado."}</div></div>`;return;}
+  const _ed=espDia(E);if(_ed){const z=ESPD[_ed];cont.innerHTML=`<div class="blq" style="background:${z.bg};border-color:${z.bd}"><div style="font-size:14px;font-weight:800;color:${z.cor}">${z.lbl}</div><div class="hint" style="margin:4px 0 0">${z.resta?("No se trabaja. Descuenta <b>"+hhmm(jorStd())+"</b> del saldo acumulado."):z.jornada?("Cuenta como d\u00eda trabajado y suma <b>"+hhmm(jorStd())+"</b> de jornada (saldo neutro)."):z.libre?"D\u00eda libre (cae en fiesta). No se trabaja, no suma ni resta. Solo para distinguirlo.":"No suma ni resta. Solo queda registrado."}</div></div>`;return;}
   cont.innerHTML=E.bloques.map((b,i)=>{
     const rm=E.bloques.length>1?`<button class="rm" data-rm="${i}">&times;</button>`:"";
     const tramos=bloqueTramos(b,E.tipo).map(x=>x[0]+"–"+x[1]).join("  +  ")||"—";
