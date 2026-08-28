@@ -81,6 +81,9 @@ header h1{font-size:17px;font-weight:700;margin:0;}
 .calwk div{text-align:center;font-size:12px;font-weight:700;color:var(--hint);}.calwk div.we{color:var(--emb);}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
 .calday{min-height:58px;border-radius:9px;padding:4px 3px;position:relative;cursor:pointer;display:flex;flex-direction:column;}
+.cdot{position:absolute;width:7px;height:7px;border-radius:50%;}
+.cdot.note{top:3px;right:3px;background:var(--emb);}
+.cdot.ovr{top:3px;left:3px;background:var(--noct);}
 .calday.empty{background:transparent!important;cursor:default;}
 .calday .caln{font-size:11px;font-weight:700;opacity:.85;line-height:1;}
 .calday .callab{flex:1;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;}
@@ -114,7 +117,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="3.0";
+const APP_VER="3.1";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -173,6 +176,7 @@ function calDayInfo(m,d,code){const rule=CAL_TYPES[calType].rule;if(rule==="cl")
 const calPad=n=>(n<10?"0":"")+n;
 function calFecha(m,d){return calYear+"-"+calPad(m+1)+"-"+calPad(d);}
 function calRegFor(f){return state.registro.find(e=>e.fecha===f);}
+function openOvr(f){const cur=(state.ovr&&state.ovr[f])||null;const opt=(v,l)=>`<button class="btn ${cur===v?"primary":"ghost"}" data-ov="${v}" style="flex:1;min-width:70px">${l}</button>`;modal(`<h2 style="margin:4px 0 6px;font-size:17px">Cambiar solo este d\u00eda</h2><p class="hint" style="margin:0 0 10px">${f} &middot; sustituye lo que marca el calendario, solo aqu\u00ed. No toca lo que tengas apuntado.</p><div style="display:flex;flex-wrap:wrap;gap:6px">${opt("M","Ma\u00f1ana")}${opt("T","Tarde")}${opt("D","Descanso")}${opt("V","Vacaciones")}</div><div class="actions"><button class="btn ghost" id="ov_rs">Quitar cambio</button><button class="btn ghost" id="ov_no">Cerrar</button></div>`);document.querySelectorAll("[data-ov]").forEach(b=>b.onclick=()=>{if(!state.ovr)state.ovr={};state.ovr[f]=b.dataset.ov;save();cerrarModal();renderCalGrid();toast("D\u00eda cambiado");});document.getElementById("ov_rs").onclick=()=>{if(state.ovr)delete state.ovr[f];save();cerrarModal();renderCalGrid();toast("Cambio quitado");};document.getElementById("ov_no").onclick=cerrarModal;}
 function viewCalendario(){return `<div class="calpanel">
   <div class="calrow"><label class="callbl">A&ntilde;o</label><select id="cal_year">${CAL_YEARS.map(y=>`<option value="${y}" ${y===calYear?"selected":""}>${y}</option>`).join("")}</select><label class="callbl">Contrato</label><select id="cal_type">${Object.keys(CAL_TYPES).map(t=>`<option value="${t}" ${t===calType?"selected":""}>${CAL_TYPES[t].label}</option>`).join("")}</select></div>
   <div class="calrow"><label class="callbl">N&ordm; calendario</label><div class="calgrp"><button id="cal_gprev">&#8722;</button><input id="cal_grp" type="number" min="1" max="${CAL_TYPES[calType].n}" value="${calGrp}" inputmode="numeric"/><button id="cal_gnext">+</button></div>
@@ -195,20 +199,20 @@ function renderCalGrid(){
   const lead=calMonIdx(m,1);
   for(let i=0;i<lead;i++)html+="<div class='calday empty'></div>";
   for(let d=1;d<=CDIM(m);d++){
-    const code=codes?codes[m][d-1]:null;const di=calDayInfo(m,d,code);const show=di.show,ph=di.ph,worked=di.worked,cl=di.cl;const wd=calDow(m,d);
+    const _fO=calFecha(m,d);const _ov=(state.ovr&&state.ovr[_fO])||null;let code,show,ph,worked,cl;if(_ov){code=_ov;show=_ov;worked=(_ov==="M"||_ov==="T");ph=worked?_ov:null;cl=null;}else{code=codes?codes[m][d-1]:null;const di=calDayInfo(m,d,code);show=di.show;ph=di.ph;worked=di.worked;cl=di.cl;}const wd=calDow(m,d);
     if(worked){ph==="M"?mC++:tC++;}
     let bg,tx;
     if(worked&&wd===6){bg=show==="M"?"var(--m-sat)":"var(--t-sat)";tx=show==="M"?"var(--m-sat-tx)":"var(--t-sat-tx)";}
     else if(worked&&wd===0){bg="var(--sun)";tx="var(--sun-tx)";}
     else if(!code){bg="var(--surface)";tx="var(--hint)";}
     else{const c=CAL_COLORS[show]||["#eee","#333"];bg=c[0];tx=c[1];}
-    const f=calFecha(m,d);const reg=calRegFor(f);let sub="",apcls="";
+    const f=calFecha(m,d);const reg=calRegFor(f);let sub="",apcls="";let marks="";if(reg&&reg.nota)marks+="<span class='cdot note'></span>";if(_ov)marks+="<span class='cdot ovr'></span>";
     if(reg){const _rk=espDia(reg);if(_rk){sub="<span class='calsub' style='color:"+ESPD[_rk].cor+"'>"+(_rk==="FOD"?"FOD":_rk==="ENF"?"Baja":_rk==="MED"?"M\u00e9dico":"FNR")+"</span>";}else{const cc=diaCalc(diaTramos(reg));sub="<span class='calsub'>"+hhmm(cc.horas).replace(" h","h")+"</span>";}apcls=" apunt";}
     const isSel=calMulti&&calSel.includes(f);const isT=(calToday.getFullYear()===calYear&&calToday.getMonth()===m&&calToday.getDate()===d);
-    html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'><span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
+    html+="<div class='calday"+(isT?" today":"")+apcls+(isSel?" selmark":"")+"' style='background:"+bg+";color:"+tx+"' data-f='"+f+"'>"+marks+"<span class='caln'>"+d+"</span><span class='callab'>"+(code?show:"")+"</span>"+sub+"</div>";
   }
   document.getElementById("cal_grid").innerHTML=html;
-  document.querySelectorAll(".calday:not(.empty)").forEach(el=>el.onclick=()=>calDayTap(el.dataset.f));
+  document.querySelectorAll(".calday:not(.empty)").forEach(el=>{let lpT=null,lp=false;const start=()=>{lp=false;lpT=setTimeout(()=>{lp=true;openOvr(el.dataset.f);},480);};const cancel=()=>{if(lpT){clearTimeout(lpT);lpT=null;}};el.addEventListener("touchstart",start,{passive:true});el.addEventListener("touchend",cancel);el.addEventListener("touchmove",cancel);el.addEventListener("mousedown",start);el.addEventListener("mouseup",cancel);el.addEventListener("mouseleave",cancel);el.onclick=()=>{if(lp){lp=false;return;}calDayTap(el.dataset.f);};});
   if(!codes){document.getElementById("cal_stats").innerHTML="Sin cuadrante cargado para <b>"+calYear+"</b> &middot; puedes apuntar servicios igualmente";}else
   document.getElementById("cal_stats").innerHTML=(calType==="ESP"?("Especial &middot; <b>"+((espCur().name)||calGrp)+"</b> &middot; jornada "+(espCur().jor==="50"?"50%":"100%")+" &middot; "):(CAL_TYPES[calType].label+" &middot; grupo <b>"+calGrp+"</b> &middot; "))+CAL_MFULL[m]+": "+mC+" ma&ntilde;ana, "+tC+" tarde";
   const leg=[["var(--m)","Ma&ntilde;ana"],["var(--t)","Tarde"],["var(--sun)","Dom. trab."],["var(--d)","D franqueo"],["var(--v)","V vacac."],["var(--fnr)","FNR festivo"]];
@@ -232,7 +236,7 @@ function bindCal(){
 }
 function openCalDia(f){const reg=calRegFor(f);if(reg)editDia(reg.id);else editDia(null,f);}
 
-function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};if(!s.carry)s.carry={};return s;}}catch(e){}return{registro:[],serv:{},jor:{},carry:{}};}
+function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};if(!s.carry)s.carry={};if(!s.ovr)s.ovr={};return s;}}catch(e){}return{registro:[],serv:{},jor:{},carry:{},ovr:{}};}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function lineasAll(){const ex=Object.keys(state.serv||{}).map(k=>k.split("|")[0]);return [...new Set([...Object.keys(CAT),...ex])].sort();}
@@ -374,7 +378,7 @@ function doImport(d){
    <div class="actions"><button class="btn ghost" id="imp_no">Cancelar</button><button class="btn danger" id="imp_si">Sí, reemplazar</button></div>`);
   document.getElementById("imp_no").onclick=closeSheet;
   document.getElementById("imp_si").onclick=()=>{
-    state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{},adj:d.adj||0,carry:d.carry||{}};if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save();closeSheet();render();toast("Datos importados");
+    state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{},adj:d.adj||0,carry:d.carry||{},ovr:d.ovr||{}};if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save();closeSheet();render();toast("Datos importados");
   };
 }
 function render(){
@@ -442,6 +446,7 @@ function editDia(id,fecha){
     <button class="addbtn" id="addb">+ Añadir otro servicio</button>
     <div class="calcbox"><div><span>Horas</span><b id="c_h">0h 00m</b></div><div><span>Nocturnas</span><b id="c_n">0h 00m</b></div><div class="esp" id="c_e"></div></div>
     <div id="dietwrap"></div>
+    <div class="field" style="margin-top:6px"><label>Comentario del d\u00eda (opcional)</label><textarea id="e_nota" rows="2" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;padding:8px;font-family:inherit;font-size:14px;resize:vertical" placeholder="ej. cambio con Fulano, refuerzo\u2026">${(E.nota||"").replace(/</g,"&lt;")}</textarea></div>
     <div class="actions">${id?'<button class="btn danger" id="e_del">Borrar</button>':''}<button class="btn ghost" id="e_cancel">Cancelar</button><button class="btn primary" id="e_save">Guardar</button></div>`);
   const fTipo=document.getElementById("f_tipo"),fFecha=document.getElementById("f_fecha");
   function fillTipos(){const L=Object.assign({},TIPOL);Object.keys(ESPD).forEach(k=>L[k]=ESPD[k].lbl);const cur=espDia(E)||E.tipo;fTipo.innerHTML=["Lab","Sab","Fest","FNR","FOD","ENF","MED"].map(t=>`<option value="${t}" ${t===cur?"selected":""}>${L[t]}</option>`).join("");}
@@ -453,9 +458,10 @@ function editDia(id,fecha){
   if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();closeSheet();render();toast("Día borrado");};
   document.getElementById("e_save").onclick=()=>{
     E.fecha=fFecha.value;if(!E.fecha){toast("Pon la fecha");return;}
+    E.nota=(val("e_nota")||"").trim();
     if(espDia(E)){const k=espDia(E);E.esp=k;E.fod=(k==="FOD");E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab=ESPD[k].lbl;}
-    else{const tr=diaTramos(E);if(!tr.length){toast("Falta el horario de alg\u00fan servicio");return;}
-    E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};}
+    else{const tr=diaTramos(E);if(!tr.length){if(E.nota){E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab="Nota";}else{toast("Falta el horario de alg\u00fan servicio o pon un comentario");return;}}
+    else E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};}
     if(!E.id)E.id=uid();
     const idx=state.registro.findIndex(x=>x.id===E.id);
     if(idx>=0)state.registro[idx]=E;else state.registro.push(E);
