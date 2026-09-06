@@ -117,7 +117,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="3.1";
+const APP_VER="3.3";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -301,25 +301,24 @@ function openAjuste(){
   document.getElementById("aj_ok").onclick=()=>{const v=parseFloat((val("aj_v")||"").replace(",","."));if(isNaN(v)){toast("Pon un n\u00famero");return;}state.adj=Math.round((v-calc)*100)/100;save();cerrarModal();render();toast("Saldo total ajustado");};}
 function openAplicar(){
   if(!calSel.length){toast("Elige d\u00edas en el calendario");return;}
-  const ls=lineasAll();
+  const ls=[...new Set([...lineasAll(),"3197","3198"])];
   modal(`<h2 style="margin:4px 0 6px;font-size:17px">Poner servicio en ${calSel.length} d\u00eda${calSel.length===1?"":"s"}</h2>
    <p class="hint" style="margin:0 0 8px">Se usar\u00e1 el horario seg\u00fan el tipo de cada d\u00eda (laborable, s\u00e1bado o festivo).</p>
    <div class="fields"><div class="field"><label>L\u00ednea</label><select id="ap_l">${ls.map(l=>`<option value="${l}">${l}</option>`).join("")}</select></div>
    <div class="field"><label>Servicio</label><select id="ap_s"></select></div></div>
-   <div class="fields"><div class="field"><label>Turno</label><select id="ap_t"><option value="1">Turno 1</option><option value="2">Turno 2</option><option value="P">Partida</option></select></div>
+   <div class="fields" id="ap_tw"><div class="field"><label>Turno</label><select id="ap_t"><option value="1">Turno 1</option><option value="2">Turno 2</option><option value="P">Partida</option></select></div>
    <div class="field"><label>&nbsp;</label><div class="hint" style="margin:0">Los d\u00edas ya apuntados se saltan</div></div></div>
    <div class="actions"><button class="btn ghost" id="ap_no">Cancelar</button><button class="btn primary" id="ap_ok">Apuntar</button></div>`);
-  const fillS=()=>{const l=val("ap_l");const set=new Set();["Lab","Sab","Fest"].forEach(t=>servsFor(l,t).forEach(s=>set.add(s)));
-    document.getElementById("ap_s").innerHTML=[...set].sort().map(s=>`<option value="${s}">${s}</option>`).join("");};
+  const fillS=()=>{const l=val("ap_l");let arr;if(isGrupo(l)){arr=Object.keys(jorGet(l)).sort();}else{const set=new Set();["Lab","Sab","Fest"].forEach(t=>servsFor(l,t).forEach(s=>set.add(s)));arr=[...set].sort();}document.getElementById("ap_s").innerHTML=arr.length?arr.map(s=>`<option value="${s}">${s}</option>`).join(""):`<option value="">(sin servicios)</option>`;const tw=document.getElementById("ap_tw");if(tw)tw.style.display=isGrupo(l)?"none":"";};
   fillS();document.getElementById("ap_l").onchange=fillS;
   document.getElementById("ap_no").onclick=cerrarModal;
   document.getElementById("ap_ok").onclick=()=>{
-    const l=val("ap_l"),s=val("ap_s"),tn=val("ap_t");let ok=0,skip=0,nod=0;
+    const l=val("ap_l"),s=val("ap_s"),tn=val("ap_t"),grp=isGrupo(l);let ok=0,skip=0,nod=0;
     for(const f of calSel.slice().sort()){
       if(state.registro.some(x=>x.fecha===f)){skip++;continue;}
-      const tp=tipoForDate(f),sd=catSd(l,tp,s);
-      if(!sd){nod++;continue;}
-      const b={linea:l,servicio:s,turno:tn,man:null};
+      const tp=tipoForDate(f);
+      const b=grp?{linea:l,servicio:s,turno:"",man:null}:{linea:l,servicio:s,turno:tn,man:null};
+      if(!grp&&!catSd(l,tp,s)){nod++;continue;}
       const tr=bloqueTramos(b,tp); if(!tr.length){nod++;continue;}
       state.registro.push({id:uid(),fecha:f,tipo:tp,bloques:[b],dietas:diaDietas(tr),lab:l+"\u00b7"+s});ok++;}
     save();calSel=[];calMulti=false;cerrarModal();render();
@@ -421,7 +420,7 @@ function viewDias(){
     const n=e.bloques.length,b0=e.bloques[0],l0=b0.man?(b0.man.l||b0.man.ini):(b0.linea+"·"+b0.servicio),lab=e.lab?e.lab:(l0+(n>1?" +"+(n-1):""));
     h+=`<div class="item" data-eid="${e.id}"><div class="d"><b>${dt.getDate()}</b><small>${dn}</small></div>
       <div class="mid"><div class="t1">${lab}</div><div class="t2">${chips||"&nbsp;"}</div></div>
-      <div class="r"><b>${hhmm(c.horas)}</b></div></div>`;}
+      <div class="r"><b>${hhmm(c.horas)}</b><small style="color:var(--muted);font-weight:700">de ${hhmm(jorStd())}</small></div></div>`;}
   return h+"</div>";}
 
 function openSheet(html){document.getElementById("sheet").innerHTML=html;document.getElementById("sheetbg").classList.add("show");requestAnimationFrame(()=>document.getElementById("sheet").classList.add("show"));document.getElementById("sheetbg").onclick=closeSheet;}
@@ -613,7 +612,7 @@ function apuntarDiaTramos(fecha,tramoList,lab){
 let GTR=[];
 function editGrupo(group,name){
   const j=jorGet(group);
-  GTR=(name&&j[name])?j[name].map(t=>[t[0]||"",t[1],t[2]]):[["","",""]];
+  GTR=(name&&j[name])?j[name].map(t=>[t[0]||"",t[1],t[2],t[3]||""]):[["","","",""]];
   const isCustom=!!(name&&state.jor[group]&&state.jor[group][name]);
   openSheet(`<div class="grab"></div><h2>${name||"Nueva jornada"} · grupo ${group}</h2>
    <div class="field full"><label>Nombre</label><input id="g_n" value="${name||""}" placeholder="ej. CL05 / 3198-A"></div>
@@ -628,22 +627,21 @@ function editGrupo(group,name){
   function renderG(){
     const c=document.getElementById("glist");
     c.innerHTML=GTR.map((t,i)=>`<div class="blq"><button class="rm" data-gr="${i}">&times;</button>
-      <div class="field"><label>Línea (opcional)</label><input data-gl="${i}" value="${t[0]||""}" placeholder="ej. 3136"></div>
-      <div class="fields" style="margin-top:6px"><div class="field"><label>Inicio</label><input type="time" data-gi="${i}" value="${t[1]||""}"></div><div class="field"><label>Fin</label><input type="time" data-gf="${i}" value="${t[2]||""}"></div></div></div>`).join("");
-    c.querySelectorAll("[data-gl]").forEach(el=>el.oninput=()=>{GTR[+el.dataset.gl][0]=el.value;});
-    c.querySelectorAll("[data-gi]").forEach(el=>el.onchange=()=>{GTR[+el.dataset.gi][1]=el.value;calcG();});
-    c.querySelectorAll("[data-gf]").forEach(el=>el.onchange=()=>{GTR[+el.dataset.gf][2]=el.value;calcG();});
+      <div class="fields"><div class="field"><label>Línea</label><input data-gl="${i}" value="${t[0]||""}" placeholder="ej. 3136" inputmode="numeric"></div><div class="field"><label>Servicio</label><input data-gs="${i}" value="${t[3]||""}" placeholder="ej. 82"></div></div><div class="fields" style="margin-top:6px"><div class="field"><label>Inicio</label><input type="time" data-gi="${i}" value="${t[1]||""}"></div><div class="field"><label>Fin</label><input type="time" data-gf="${i}" value="${t[2]||""}"></div></div>${(function(){var inCat=t[0]&&t[3]&&(catSd(t[0],"Lab",t[3])||catSd(t[0],"Sab",t[3])||catSd(t[0],"Fest",t[3]));if(inCat)return `<div class="hint" style="margin:6px 0 0;color:var(--dieta)">\u2713 ${t[0]}/${t[3]} en el cat\u00e1logo</div>`;if(t[0]&&t[3]&&t[1]&&t[2])return `<button class="addbtn" data-gsave="${i}" style="margin:6px 0 0;padding:8px;font-size:13px">\ud83d\udcbe Guardar ${t[0]}/${t[3]} en el cat\u00e1logo</button>`;return "";})()}</div>`).join("");
+    function gAuto(i){const t=GTR[i];const l=(t[0]||"").trim(),s=(t[3]||"").trim();if(!l||!s)return;const sd=catSd(l,"Lab",s)||catSd(l,"Sab",s)||catSd(l,"Fest",s);if(!sd)return;const seg=sd.t1||sd.t2;if(seg){t[1]=seg[0];t[2]=seg[1];}}c.querySelectorAll("[data-gl]").forEach(el=>el.oninput=()=>{GTR[+el.dataset.gl][0]=el.value;});c.querySelectorAll("[data-gs]").forEach(el=>el.onchange=()=>{const i=+el.dataset.gs;GTR[i][3]=el.value;gAuto(i);renderG();});c.querySelectorAll("[data-gsave]").forEach(el=>el.onclick=()=>{const t=GTR[+el.dataset.gsave];const key=t[0]+"|Lab|"+t[3];const prev=state.serv[key]||{};state.serv[key]=Object.assign({},prev,{t1:[t[1],t[2]]});save();renderG();toast("Guardado "+t[0]+"/"+t[3]);});
+    c.querySelectorAll("[data-gi]").forEach(el=>el.onchange=()=>{GTR[+el.dataset.gi][1]=el.value;renderG();});
+    c.querySelectorAll("[data-gf]").forEach(el=>el.onchange=()=>{GTR[+el.dataset.gf][2]=el.value;renderG();});
     c.querySelectorAll("[data-gr]").forEach(el=>el.onclick=()=>{GTR.splice(+el.dataset.gr,1);if(!GTR.length)GTR=[["","",""]];renderG();});
     calcG();
   }
   function calcG(){const tr=GTR.filter(t=>t[1]&&t[2]).map(t=>[t[1],t[2]]);const c=diaCalc(tr);document.getElementById("g_h").textContent=hhmm(c.horas);document.getElementById("g_nn").textContent=hhmm(c.noct);document.getElementById("g_e").textContent=c.espera>0?("incluye "+hhmm(c.espera/60)+" de espera"):"";const d=diaDietas(tr);document.getElementById("g_diet").textContent=[d.desayuno?"Desayuno":"",d.comida?"Comida":"",d.cena?"Cena":""].filter(Boolean).join(" · ")||"Sin dietas";}
-  document.getElementById("g_add").onclick=()=>{GTR.push(["","",""]);renderG();};
+  document.getElementById("g_add").onclick=()=>{GTR.push(["","","",""]);renderG();};
   document.getElementById("g_c").onclick=closeSheet;
-  document.getElementById("g_ap").onclick=()=>{const tr=GTR.map(t=>[t[0]||"",t[1],t[2]]);if(apuntarDiaTramos(val("g_fecha"),tr,group+" · "+(val("g_n")||""))){closeSheet();render();toast("Apuntado en Días");}};
+  document.getElementById("g_ap").onclick=()=>{const tr=GTR.map(t=>[t[0]||"",t[1],t[2],t[3]||""]);if(apuntarDiaTramos(val("g_fecha"),tr,group+" · "+(val("g_n")||""))){closeSheet();render();toast("Apuntado en Días");}};
   if(document.getElementById("g_del"))document.getElementById("g_del").onclick=()=>{delete state.jor[group][name];save();closeSheet();render();toast("Borrada");};
   document.getElementById("g_sv").onclick=()=>{
     const nm=val("g_n").trim();if(!nm){toast("Ponle nombre");return;}
-    const tr=GTR.filter(t=>t[1]&&t[2]).map(t=>[t[0]||"",t[1],t[2]]);if(!tr.length){toast("Pon al menos un servicio");return;}
+    const tr=GTR.filter(t=>t[1]&&t[2]).map(t=>[t[0]||"",t[1],t[2],t[3]||""]);if(!tr.length){toast("Pon al menos un servicio");return;}
     if(name&&name!==nm&&state.jor[group]&&state.jor[group][name])delete state.jor[group][name];
     state.jor[group]=state.jor[group]||{};state.jor[group][nm]=tr;save();closeSheet();render();toast("Guardada "+nm);
   };
