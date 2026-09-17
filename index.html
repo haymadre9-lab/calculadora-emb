@@ -117,7 +117,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="3.3";
+const APP_VER="3.6";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -263,7 +263,8 @@ function spanMin(i,f){const a=toMin(i),b=toMin(f);if(a==null||b==null)return 0;r
 function nightAbs(a,b){let t=0;for(const[w0,w1]of NIGHT)t+=Math.max(0,Math.min(b,w1)-Math.max(a,w0));return t;}
 function turnoAvail(sd){return{1:!!(sd&&sd.t1),2:!!(sd&&sd.t2),P:!!(sd&&sd.t1&&sd.t2)};}
 function turnoTramos(sd,t){if(!sd)return[];if(t==='1')return sd.t1?[sd.t1]:[];if(t==='2')return sd.t2?[sd.t2]:[];return[sd.t1,sd.t2].filter(Boolean);}
-function bloqueTramos(b,tipo){if(b.man){return b.man.ini&&b.man.fin?[[b.man.ini,b.man.fin]]:[];}if(isGrupo(b.linea))return (jorGet(b.linea)[b.servicio]||[]).map(t=>[t[1],t[2]]);return turnoTramos(catSd(b.linea,tipo,b.servicio),b.turno);}
+function groupServs(l){const set=new Set(Object.keys(jorGet(l)));Object.keys(state.serv||{}).forEach(k=>{const p=k.split("|");if(p[0]===l)set.add(p[2]);});return [...set].sort();}
+function bloqueTramos(b,tipo){if(b.man){return b.man.ini&&b.man.fin?[[b.man.ini,b.man.fin]]:[];}if(isGrupo(b.linea)){const jj=jorGet(b.linea)[b.servicio];if(jj)return jj.map(t=>[t[1],t[2]]);const sd=catSd(b.linea,tipo,b.servicio)||catSd(b.linea,"Lab",b.servicio)||catSd(b.linea,"Sab",b.servicio)||catSd(b.linea,"Fest",b.servicio);if(sd){const out=[];if(sd.t1)out.push(sd.t1);if(sd.t2)out.push(sd.t2);return out;}return [];}let sd=catSd(b.linea,tipo,b.servicio);if(!sd)sd=catSd(b.linea,"Lab",b.servicio)||catSd(b.linea,"Sab",b.servicio)||catSd(b.linea,"Fest",b.servicio);return turnoTramos(sd,b.turno);}
 function diaTramos(e){let out=[];for(const b of e.bloques)for(const tr of bloqueTramos(b,e.tipo))out.push(tr);return out;}
 function diaCalc(tramos){let iv=tramos.map(([i,f])=>{let a=toMin(i),b=toMin(f);if(b<a)b+=1440;return[a,b];}).sort((x,y)=>x[0]-y[0]);let horas=0,noct=0,espera=0;for(let k=0;k<iv.length;k++){horas+=iv[k][1]-iv[k][0];noct+=nightAbs(iv[k][0],iv[k][1]);if(k>0){const g=iv[k][0]-iv[k-1][1];if(g>0&&g<60){horas+=g;espera+=g;}}}return{horas:horas/60,noct:noct/60,espera};}
 function diaDietas(tramos){if(!tramos.length)return{desayuno:false,comida:false,cena:false};const iv=tramos.map(([i,f])=>{let a=toMin(i),b=toMin(f);if(b<a)b+=1440;return[a,b];});const earliest=Math.min(...iv.map(x=>x[0])),latest=Math.max(...iv.map(x=>x[1]));const turno=earliest<780?1:2;return{desayuno:turno===1&&earliest<270,comida:turno===1?latest>930:earliest<810,cena:latest>1470};}
@@ -283,7 +284,7 @@ function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d)
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
 function fallbackCopy(t){const ta=document.getElementById("exp_t");if(ta){ta.select();ta.setSelectionRange(0,99999);try{document.execCommand("copy");toast("Copiado");}catch(e){toast("Copia manual");}}}
 function bindBackup(){const e=document.getElementById("b_exp");if(!e)return;e.onclick=exportData;document.getElementById("b_imp").onclick=importData;
-  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;const cy=document.getElementById("carry_go");if(cy)cy.onclick=openCarry;}
+  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;const cy=document.getElementById("carry_go");if(cy)cy.onclick=openCarry;const ub=document.getElementById("b_undo");if(ub)ub.onclick=undoImport;}
 function openCarry(){const act=(state.carry&&state.carry[calYear]!=null)?state.carry[calYear]:null;modal(`<h2 style="margin:4px 0 6px;font-size:17px">Horas que vienen de ${calYear-1}</h2><p class="hint" style="margin:0 0 8px">Solo informativo, para llevar el control de un a\u00f1o a otro. No afecta a los c\u00e1lculos.</p><div class="fields"><div class="field"><label>Horas (a\u00f1o ${calYear-1})</label><input id="cy_v" type="text" inputmode="decimal" value="${act!=null?String(act).replace(".",","):""}" placeholder="ej. +12,50 o -8"></div></div><div class="actions"><button class="btn ghost" id="cy_no">Cancelar</button><button class="btn ghost" id="cy_rs">Borrar</button><button class="btn primary" id="cy_ok">Guardar</button></div>`);document.getElementById("cy_no").onclick=cerrarModal;document.getElementById("cy_rs").onclick=()=>{if(state.carry)delete state.carry[calYear];save();cerrarModal();render();toast("Borrado");};document.getElementById("cy_ok").onclick=()=>{const v=parseFloat((val("cy_v")||"").replace(",","."));if(isNaN(v)){toast("Pon un n\u00famero");return;}if(!state.carry)state.carry={};state.carry[calYear]=Math.round(v*100)/100;save();cerrarModal();render();toast("Guardado");};}
 function modal(html){const old=document.getElementById("mdlx");if(old)old.remove();const m=document.createElement("div");m.id="mdlx";
   m.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;";
@@ -309,7 +310,7 @@ function openAplicar(){
    <div class="fields" id="ap_tw"><div class="field"><label>Turno</label><select id="ap_t"><option value="1">Turno 1</option><option value="2">Turno 2</option><option value="P">Partida</option></select></div>
    <div class="field"><label>&nbsp;</label><div class="hint" style="margin:0">Los d\u00edas ya apuntados se saltan</div></div></div>
    <div class="actions"><button class="btn ghost" id="ap_no">Cancelar</button><button class="btn primary" id="ap_ok">Apuntar</button></div>`);
-  const fillS=()=>{const l=val("ap_l");let arr;if(isGrupo(l)){arr=Object.keys(jorGet(l)).sort();}else{const set=new Set();["Lab","Sab","Fest"].forEach(t=>servsFor(l,t).forEach(s=>set.add(s)));arr=[...set].sort();}document.getElementById("ap_s").innerHTML=arr.length?arr.map(s=>`<option value="${s}">${s}</option>`).join(""):`<option value="">(sin servicios)</option>`;const tw=document.getElementById("ap_tw");if(tw)tw.style.display=isGrupo(l)?"none":"";};
+  const fillS=()=>{const l=val("ap_l");let arr;if(isGrupo(l)){arr=groupServs(l);}else{const set=new Set();["Lab","Sab","Fest"].forEach(t=>servsFor(l,t).forEach(s=>set.add(s)));arr=[...set].sort();}document.getElementById("ap_s").innerHTML=arr.length?arr.map(s=>`<option value="${s}">${s}</option>`).join(""):`<option value="">(sin servicios)</option>`;const tw=document.getElementById("ap_tw");if(tw)tw.style.display=isGrupo(l)?"none":"";};
   fillS();document.getElementById("ap_l").onchange=fillS;
   document.getElementById("ap_no").onclick=cerrarModal;
   document.getElementById("ap_ok").onclick=()=>{
@@ -318,7 +319,7 @@ function openAplicar(){
       if(state.registro.some(x=>x.fecha===f)){skip++;continue;}
       const tp=tipoForDate(f);
       const b=grp?{linea:l,servicio:s,turno:"",man:null}:{linea:l,servicio:s,turno:tn,man:null};
-      if(!grp&&!catSd(l,tp,s)){nod++;continue;}
+      
       const tr=bloqueTramos(b,tp); if(!tr.length){nod++;continue;}
       state.registro.push({id:uid(),fecha:f,tipo:tp,bloques:[b],dietas:diaDietas(tr),lab:l+"\u00b7"+s});ok++;}
     save();calSel=[];calMulti=false;cerrarModal();render();
@@ -362,7 +363,7 @@ function importData(){
    <div class="actions"><button class="btn ghost" id="imp_file">Desde archivo</button><button class="btn primary" id="imp_go">Importar</button></div>
    <input type="file" id="imp_fl" accept=".json,application/json" style="display:none">`);
   document.getElementById("imp_file").onclick=()=>document.getElementById("imp_fl").click();
-  document.getElementById("imp_fl").onchange=ev=>{const fl=ev.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{document.getElementById("imp_t").value=r.result;};r.readAsText(fl);};
+  document.getElementById("imp_fl").onchange=ev=>{const fl=ev.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{let t=(r.result||"").replace(/^\uFEFF/,"");const ta=document.getElementById("imp_t");if(ta)ta.value=t;if(!t.trim())toast("El archivo est\u00e1 vac\u00edo o no se pudo leer");};r.onerror=()=>toast("No se pudo leer el archivo");try{r.readAsText(fl);}catch(e){toast("No se pudo leer el archivo");}};
   document.getElementById("imp_go").onclick=()=>{
     const txt=document.getElementById("imp_t").value.trim();if(!txt){toast("Pega los datos primero");return;}
     let d;try{d=JSON.parse(txt);}catch(e){toast("Texto no válido");return;}
@@ -370,13 +371,15 @@ function importData(){
     doImport(d);
   };
 }
+function undoImport(){let u;try{u=JSON.parse(localStorage.getItem("emb_calc_undo"));}catch(e){}if(!u||!u.state){toast("No hay importaci\u00f3n que deshacer");return;}const nn=(u.state.registro||[]).length;modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfDeshacer la \u00faltima importaci\u00f3n?</h2><p class="hint" style="margin:0 0 10px">Vuelve a como estaba justo antes de importar (${nn} d\u00eda${nn===1?"":"s"}).</p><div class="actions"><button class="btn ghost" id="un_no">Cancelar</button><button class="btn primary" id="un_si">S\u00ed, deshacer</button></div>`);document.getElementById("un_no").onclick=cerrarModal;document.getElementById("un_si").onclick=()=>{state=u.state;if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};if(u.esp&&Array.isArray(u.esp.list)){espData=u.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(u.cfg&&CAL_TYPES[u.cfg.type]){calType=u.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,u.cfg.grp||1));calOff=(u.cfg.off===1)?1:0;if(CAL_YEARS.includes(+u.cfg.year))calYear=+u.cfg.year;calSave();}localStorage.removeItem("emb_calc_undo");save();cerrarModal();render();toast("Importaci\u00f3n deshecha");};}
 function doImport(d){
   const n=(d.registro||[]).length;
   openSheet(`<div class="grab"></div><h2>¿Reemplazar tus datos?</h2>
-   <p class="hint">La copia tiene <b>${n}</b> día${n===1?"":"s"} apuntado${n===1?"":"s"}. Esto <b>sustituirá</b> todo lo que tengas ahora en la app (días, servicios, jornadas y calendarios especiales). No se puede deshacer.</p>
+   ${n===0?`<p class="hint" style="color:var(--emb);font-weight:800">\u26a0\ufe0f Esta copia est\u00e1 VAC\u00cdA (0 d\u00edas). Si contin\u00faas te quedar\u00e1s sin lo que tienes ahora.</p>`:""}<p class="hint">La copia tiene <b>${n}</b> d\u00eda${n===1?"":"s"} apuntado${n===1?"":"s"}. Esto <b>sustituir\u00e1</b> lo que tengas ahora, pero se guarda una copia para poder <b>deshacer</b>.</p>
    <div class="actions"><button class="btn ghost" id="imp_no">Cancelar</button><button class="btn danger" id="imp_si">Sí, reemplazar</button></div>`);
   document.getElementById("imp_no").onclick=closeSheet;
   document.getElementById("imp_si").onclick=()=>{
+    try{localStorage.setItem("emb_calc_undo",JSON.stringify({state:state,esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear},ts:Date.now()}));}catch(e){}
     state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{},adj:d.adj||0,carry:d.carry||{},ovr:d.ovr||{}};if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save();closeSheet();render();toast("Datos importados");
   };
 }
@@ -408,7 +411,7 @@ function viewResumen(){const t=periodTotals();const tot=totalAcum();return `<div
   <p class="hint">Contadores del período 26→25. Cámbialo con las flechas de arriba.</p>
   <div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:4px">Copia de seguridad</div>
   <p class="hint" style="margin:0 0 10px">Guarda todos tus datos (días, servicios y jornadas) para pasarlos a otro móvil.</p>
-  <div class="actions" style="margin-top:0"><button class="btn ghost" id="b_exp">Exportar</button><button class="btn primary" id="b_imp">Importar</button></div></div>`;}
+  <div class="actions" style="margin-top:0"><button class="btn ghost" id="b_exp">Exportar</button><button class="btn primary" id="b_imp">Importar</button></div>${localStorage.getItem("emb_calc_undo")?`<div class="actions" style="margin-top:6px"><button class="btn ghost" id="b_undo" style="color:var(--emb)">Deshacer importaci\u00f3n</button></div>`:""}</div>`;}
 function viewDias(){
   const list=state.registro.filter(e=>inPeriod(e.fecha)).sort((a,b)=>a.fecha<b.fecha?-1:1);
   if(!list.length)return `<div class="empty">No hay días en este período.<br>Pulsa “+ Añadir día”.</div>`;
@@ -454,7 +457,7 @@ function editDia(id,fecha){
   fTipo.onchange=()=>{if(ESPD[fTipo.value]){E.esp=fTipo.value;E.fod=(fTipo.value==="FOD");E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;E.fnr=false;renderBloques();return;}E.esp=null;E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
   document.getElementById("addb").onclick=()=>{E.bloques.push({linea:E.bloques[E.bloques.length-1].linea,servicio:"",turno:"1",man:null});const b=E.bloques[E.bloques.length-1];const ss=servsFor(b.linea,E.tipo);b.servicio=ss[0]||"";const sd=catSd(b.linea,E.tipo,b.servicio);b.turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");renderBloques();};
   document.getElementById("e_cancel").onclick=closeSheet;
-  if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();closeSheet();render();toast("Día borrado");};
+  if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfBorrar este d\u00eda?</h2><p class="hint" style="margin:0 0 10px">${E.fecha}. No se puede deshacer.</p><div class="actions"><button class="btn ghost" id="del_no">Cancelar</button><button class="btn danger" id="del_si">S\u00ed, borrar</button></div>`);document.getElementById("del_no").onclick=cerrarModal;document.getElementById("del_si").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();cerrarModal();closeSheet();render();toast("D\u00eda borrado");};};
   document.getElementById("e_save").onclick=()=>{
     E.fecha=fFecha.value;if(!E.fecha){toast("Pon la fecha");return;}
     E.nota=(val("e_nota")||"").trim();
@@ -515,7 +518,7 @@ function renderBloques(){
         <div class="tramos">${tramos}</div></div>`;
     }
     const lopts=LINEAS.map(l=>`<option value="${l}" ${b.linea===l?"selected":""}>${l}</option>`).join("")+["3197","3198"].map(l=>`<option value="${l}" ${b.linea===l?"selected":""}>${l} (jornadas)</option>`).join("");
-    if(isGrupo(b.linea)){const js=Object.keys(jorGet(b.linea)).sort();const sopts=js.length?js.map(s=>`<option value="${s}" ${b.servicio===s?"selected":""}>${s}</option>`).join(""):`<option value="">(sin jornadas)</option>`;return `<div class="blq">${rm}<div class="fields"><div class="field"><label>L\u00ednea</label><select data-lin="${i}">${lopts}</select></div><div class="field"><label>Jornada</label><select data-srv="${i}">${sopts}</select></div></div><div class="tramos">${tramos}</div></div>`;}
+    if(isGrupo(b.linea)){const js=groupServs(b.linea);const sopts=js.length?js.map(s=>`<option value="${s}" ${b.servicio===s?"selected":""}>${s}</option>`).join(""):`<option value="">(sin jornadas)</option>`;return `<div class="blq">${rm}<div class="fields"><div class="field"><label>L\u00ednea</label><select data-lin="${i}">${lopts}</select></div><div class="field"><label>Jornada</label><select data-srv="${i}">${sopts}</select></div></div><div class="tramos">${tramos}</div></div>`;}
     const ss=servsFor(b.linea,E.tipo);
     const sopts=ss.map(s=>`<option value="${s}" ${b.servicio===s?"selected":""}>${s}${catSd(b.linea,E.tipo,s)&&catSd(b.linea,E.tipo,s).p?" (part.)":""}</option>`).join("")+'<option value="__man__">— a mano —</option>';
     const sd=catSd(b.linea,E.tipo,b.servicio),av=turnoAvail(sd);
@@ -528,7 +531,7 @@ function renderBloques(){
       ${body}<div class="tramos">${tramos}</div></div>`;
   }).join("");
   // bind
-  cont.querySelectorAll("[data-lin]").forEach(el=>el.onchange=()=>{const i=+el.dataset.lin;E.bloques[i].linea=el.value;E.bloques[i].man=null;if(isGrupo(el.value)){const js=Object.keys(jorGet(el.value)).sort();E.bloques[i].servicio=js[0]||"";E.bloques[i].turno="";manualDiet=false;renderBloques();return;}const ss=servsFor(el.value,E.tipo);E.bloques[i].servicio=ss[0]||"";const sd=catSd(el.value,E.tipo,E.bloques[i].servicio);E.bloques[i].turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");manualDiet=false;renderBloques();});
+  cont.querySelectorAll("[data-lin]").forEach(el=>el.onchange=()=>{const i=+el.dataset.lin;E.bloques[i].linea=el.value;E.bloques[i].man=null;if(isGrupo(el.value)){const js=groupServs(el.value);E.bloques[i].servicio=js[0]||"";E.bloques[i].turno="";manualDiet=false;renderBloques();return;}const ss=servsFor(el.value,E.tipo);E.bloques[i].servicio=ss[0]||"";const sd=catSd(el.value,E.tipo,E.bloques[i].servicio);E.bloques[i].turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");manualDiet=false;renderBloques();});
   cont.querySelectorAll("[data-srv]").forEach(el=>el.onchange=()=>{const i=+el.dataset.srv;if(isGrupo(E.bloques[i].linea)){E.bloques[i].servicio=el.value;manualDiet=false;renderBloques();return;}if(el.value==="__man__"){E.bloques[i].man={ini:"",fin:""};}else{E.bloques[i].man=null;E.bloques[i].servicio=el.value;const sd=catSd(E.bloques[i].linea,E.tipo,el.value);E.bloques[i].turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");}manualDiet=false;renderBloques();});
   cont.querySelectorAll("[data-seg]").forEach(seg=>seg.querySelectorAll("button").forEach(btn=>btn.onclick=()=>{if(btn.disabled)return;const i=+seg.dataset.seg;E.bloques[i].turno=btn.dataset.t;manualDiet=false;renderBloques();}));
   cont.querySelectorAll("[data-rm]").forEach(el=>el.onclick=()=>{E.bloques.splice(+el.dataset.rm,1);manualDiet=false;renderBloques();});
