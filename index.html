@@ -117,7 +117,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="3.7";
+const APP_VER="4.3";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -144,7 +144,7 @@ let calMonth=calInitMonth(),calPhaseMap={};
 const CAL_ESP="emb_calesp_2026";
 let espData=espLoad();CAL_TYPES.ESP.n=espData.list.length;let calEdit=false,calPaint="M";
 function espLoad(){try{const s=JSON.parse(localStorage.getItem(CAL_ESP));if(s&&Array.isArray(s.list)&&s.list.length)return s;}catch(e){}return{list:[{name:"76-Mod",codes:"D".repeat(365),jor:"100"}]};}
-function espSave(){try{localStorage.setItem(CAL_ESP,JSON.stringify(espData));}catch(e){}}
+function espSave(){try{let old=null;try{old=JSON.parse(localStorage.getItem(CAL_ESP));}catch(e){}if(old&&Array.isArray(old.list)&&(old._rev||0)>(espData._rev||0)){const have=new Set(espData.list.map(c=>c.name));old.list.forEach(c=>{if(!have.has(c.name))espData.list.push(c);});CAL_TYPES.ESP.n=espData.list.length;}espData._rev=Math.max((old&&old._rev)||0,espData._rev||0)+1;localStorage.setItem(CAL_ESP,JSON.stringify(espData));}catch(e){}}
 function espList(){return espData.list;}
 function espCur(){return espData.list[calGrp-1]||espData.list[0];}
 function espCodesFor(y){const c=espCur();if(typeof c.codes==="string"){const v=c.codes;c.codes={};c.codes[CAL_BASEYEAR]=v;}if(!c.codes)c.codes={};if(!c.codes[y]||c.codes[y].length!==diasAnio(y))c.codes[y]="D".repeat(diasAnio(y));return c.codes[y];}
@@ -236,39 +236,226 @@ function bindCal(){
 }
 function openCalDia(f){const reg=calRegFor(f);if(reg)editDia(reg.id);else editDia(null,f);}
 
-function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};if(!s.carry)s.carry={};if(!s.ovr)s.ovr={};return s;}}catch(e){}return{registro:[],serv:{},jor:{},carry:{},ovr:{}};}
-function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}snapSoon();}
+function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.registro){if(!s.serv)s.serv={};if(!s.jor)s.jor={};if(!s.carry)s.carry={};if(!s.ovr)s.ovr={};if(!s._del)s._del={};return s;}}catch(e){}return{registro:[],serv:{},jor:{},carry:{},ovr:{}};}
+try{if(!localStorage.getItem("emb_born"))localStorage.setItem("emb_born",String(Date.now()));}catch(e){}
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();window._bip=e;});
+async function fillProt(){
+  const el=document.getElementById("prot_card");if(!el)return;
+  let pers=null,usage=null;
+  try{if(navigator.storage&&navigator.storage.persisted)pers=await navigator.storage.persisted();}catch(e){}
+  if(pers===false){try{if(navigator.storage.persist)pers=await navigator.storage.persist();}catch(e){}}
+  try{if(navigator.storage&&navigator.storage.estimate){const e=await navigator.storage.estimate();usage=e.usage;}}catch(e){}
+  let sa=false;try{sa=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;}catch(e){}
+  const born=+localStorage.getItem("emb_born")||0;const bd=born?new Date(born).toLocaleDateString("es-ES"):"?";
+  const bk=backupAgeDays();
+  const okP=pers===true,okI=sa;const warn=!okP||!okI;
+  const L=(ok,t)=>`<div style="font-size:13px;margin:3px 0;color:${ok?"var(--dieta)":"var(--emb)"};font-weight:700">${ok?"\u2713":"\u26a0"} ${t}</div>`;
+  el.innerHTML=`<div class="card" style="background:${warn?"var(--emb-soft)":"var(--dieta-soft)"};border-color:${warn?"#EFCACA":"#BFD8B6"}">`+
+   `<div style="font-weight:800;font-size:14px;color:${warn?"var(--emb)":"var(--dieta)"}">${warn?"Tus datos pueden perderse":"Datos protegidos"}</div>`+
+   L(okP,okP?"Almacenamiento persistente: Android no lo borra solo":"Almacenamiento NO persistente: el navegador puede borrarlo")+
+   L(okI,okI?"App instalada":"Abierta en el navegador. Inst\u00e1lala: men\u00fa \u22ee \u2192 Instalar aplicaci\u00f3n")+
+   L(bk!==null&&bk<7,bk===null?"Nunca has exportado una copia":"\u00daltima copia exportada: hace "+bk+" d\u00eda"+(bk===1?"":"s"))+
+   `<div class="hint" style="margin:6px 0 0"><b>${state.registro.length}</b> d\u00edas guardados en total${state.registro.length?" (\u00faltimo: "+fmtF(lastFecha())+")":""}, ${Object.keys(state.serv||{}).length} servicios propios. Guardando datos en este m\u00f3vil desde el <b>${bd}</b>${usage!=null?" &middot; "+(usage/1048576).toFixed(1)+" MB":""}. Si aqu\u00ed sale hoy y ya usabas la app, algo los borr\u00f3.</div>`+
+   `<div class="actions" style="margin-top:8px">${window._bip?`<button class="btn ghost" id="prot_inst">Instalar app</button>`:""}<button class="btn primary" id="prot_exp">Exportar copia ahora</button></div></div>`;
+  const pe=document.getElementById("prot_exp");if(pe)pe.onclick=()=>exportData();
+  const pi=document.getElementById("prot_inst");if(pi)pi.onclick=async()=>{try{window._bip.prompt();await window._bip.userChoice;}catch(e){}window._bip=null;fillProt();};
+}
+function lastFecha(){return state.registro.reduce((m,e)=>e.fecha>m?e.fecha:m,"");}
+function fmtF(f){return f?f.slice(8,10)+"/"+f.slice(5,7)+"/"+f.slice(0,4):"";}
+function periodHint(){
+  const n=state.registro.length;
+  if(n===0)return `<div class="card" style="background:var(--emb-soft);border-color:#EFCACA"><div style="font-weight:800;color:var(--emb);font-size:14px">No hay ning\u00fan d\u00eda guardado en este m\u00f3vil</div><div class="hint" style="margin:4px 0 8px">Si es la primera vez, ignora esto. Si ya usabas la app, restaura tus datos:</div><div class="actions" style="margin-top:0"><button class="btn ghost" id="ph_snaps">Copias autom\u00e1ticas</button><button class="btn primary" id="ph_imp">Importar copia</button></div></div>`;
+  if(!state.registro.some(e=>inPeriod(e.fecha)))return `<div class="card" style="background:var(--dieta-soft);border-color:#BFD8B6"><div style="font-weight:800;color:var(--dieta);font-size:14px">Tus datos est\u00e1n aqu\u00ed</div><div class="hint" style="margin:4px 0 8px">Este per\u00edodo (${periodLabel(period)}) a\u00fan no tiene d\u00edas, pero la app guarda <b>${n} d\u00eda${n===1?"":"s"}</b> en otros per\u00edodos. El \u00faltimo es el <b>${fmtF(lastFecha())}</b>.</div><div class="actions" style="margin-top:0"><button class="btn primary" id="pj_go">Ir al \u00faltimo per\u00edodo con datos</button></div></div>`;
+  return "";}
+function bindHints(){
+  const a=document.getElementById("pj_go");if(a)a.onclick=()=>{period=periodFromDate(lastFecha());render();};
+  const b=document.getElementById("ph_snaps");if(b)b.onclick=openSnaps;
+  const c=document.getElementById("ph_imp");if(c)c.onclick=()=>importData();}
+function cnt(s){s=s||{};return{d:(s.registro||[]).length,s:Object.keys(s.serv||{}).length,j:Object.values(s.jor||{}).reduce((a,g)=>a+Object.keys(g||{}).length,0)};}
+/* ===== Integridad de datos ===== */
+function itemsOf(s){s=s||{};const o=new Set();(s.registro||[]).forEach(e=>o.add("d:"+e.id));Object.keys(s.serv||{}).forEach(k=>o.add("s:"+k));
+  Object.keys(s.jor||{}).forEach(g=>Object.keys(s.jor[g]||{}).forEach(n=>o.add("j:"+g+"|"+n)));return o;}
+function missingKeys(ref,cur){const a=itemsOf(ref),b=itemsOf(cur),dl=(cur&&cur._del)||{},o=[];a.forEach(k=>{if(!b.has(k)&&!dl[k])o.push(k);});return o;}
+function missingIn(ref,cur){let d=0,s=0,j=0;missingKeys(ref,cur).forEach(k=>{if(k[0]==="d")d++;else if(k[0]==="s")s++;else j++;});return{d:d,s:s,j:j,t:d+s+j};}
+function tombstoneDiff(prev,cur){if(!cur._del)cur._del={};const a=itemsOf(prev),b=itemsOf(cur),t=Date.now();a.forEach(k=>{if(!b.has(k))cur._del[k]=t;});}
+function mergeMissing(into,from){let n=0;if(!into._del)into._del={};const dl=into._del,fd=from._del||{};
+  Object.keys(fd).forEach(k=>{if(!(k in dl))dl[k]=fd[k];});
+  const ids=new Map((into.registro||[]).map(e=>[e.id,e]));
+  (from.registro||[]).forEach(e=>{if(dl["d:"+e.id])return;const m=ids.get(e.id);
+    if(!m){into.registro.push(JSON.parse(JSON.stringify(e)));n++;}
+    else if((e.mt||0)>(m.mt||0)){Object.keys(m).forEach(k=>delete m[k]);Object.assign(m,JSON.parse(JSON.stringify(e)));}});
+  if(!into.serv)into.serv={};Object.keys(from.serv||{}).forEach(k=>{if(dl["s:"+k])return;if(!(k in into.serv)){into.serv[k]=JSON.parse(JSON.stringify(from.serv[k]));n++;}});
+  if(!into.jor)into.jor={};Object.keys(from.jor||{}).forEach(g=>{if(!into.jor[g])into.jor[g]={};Object.keys(from.jor[g]||{}).forEach(nm=>{if(dl["j:"+g+"|"+nm])return;if(!(nm in into.jor[g])){into.jor[g][nm]=JSON.parse(JSON.stringify(from.jor[g][nm]));n++;}});});
+  return n;}
+function delMark(kind,key){if(!state._del)state._del={};state._del[kind+":"+key]=Date.now();
+  const ks=Object.keys(state._del);if(ks.length>300){ks.sort((a,b)=>state._del[a]-state._del[b]).slice(0,ks.length-300).forEach(k=>delete state._del[k]);}}
+let saveFail=false;
+function warnSave(on){let el=document.getElementById("savewarn");if(!on){if(el)el.remove();return;}
+  if(!el){el=document.createElement("div");el.id="savewarn";el.style.cssText="position:fixed;top:0;left:0;right:0;z-index:200;background:#C62828;color:#fff;padding:10px 12px;font:700 13px system-ui;text-align:center";document.body.appendChild(el);}
+  el.innerHTML='\u26a0 NO SE EST\u00c1 GUARDANDO en este m\u00f3vil. Lo \u00faltimo solo est\u00e1 en pantalla. <button id="sw_exp" style="margin-left:6px;padding:4px 10px;border-radius:8px;border:0;font-weight:800">Exportar copia ya</button>';
+  const b=document.getElementById("sw_exp");if(b)b.onclick=()=>{try{exportData();}catch(e){}};}
+function save(force){
+  let old=null,raw=null;
+  try{raw=localStorage.getItem(STORE);if(raw){try{old=JSON.parse(raw);}catch(e){}}}catch(e){}
+  if(raw&&(!old||!old.registro)){try{localStorage.setItem("emb_calc_corrupt",raw);}catch(e){}}
+  if(old&&old.registro){
+    if(!force&&(old._rev||0)>(state._rev||0)){const n=mergeMissing(state,old);if(n>0){try{toast("Recuperados "+n+" cambios hechos en otra ventana");}catch(e){}}}
+    if(!force){const a=cnt(old),b=cnt(state);const lost=k=>a[k]>=3&&b[k]===0;
+      if(lost("d")||lost("s")||lost("j")){snapRaw(old,"Bloqueado: iba a perder datos");
+        state=old;if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};
+        try{toast("Cambio bloqueado: iba a borrar datos de golpe");}catch(e){}try{render();}catch(e){}return;}}}
+  state._rev=Math.max((old&&old._rev)||0,state._rev||0)+1;
+  const json=JSON.stringify(state);let ok=false;
+  try{localStorage.setItem(STORE,json);ok=true;}catch(e){
+    try{localStorage.removeItem("emb_calc_undo");localStorage.removeItem("emb_calc_corrupt");localStorage.setItem(STORE,json);ok=true;}catch(e2){}}
+  if(ok){if(saveFail){saveFail=false;warnSave(false);}}
+  else{saveFail=true;warnSave(true);try{idbPut("emergency",{ts:Date.now(),state:JSON.parse(json),esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear}});}catch(e){}}
+  snapSoon();gdSoon();}
+/* sincronizar si otra ventana/instancia guardo algo mas nuevo */
+function sheetOpen(){const sb=document.getElementById("sheetbg");return !!((sb&&sb.classList.contains("show"))||document.getElementById("mdlx")||document.getElementById("svmodal"));}
+function syncFromStorage(){try{const raw=localStorage.getItem(STORE);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.registro)return;
+  let changed=false;
+  if((s._rev||0)>(state._rev||0)){state=s;if(!state.serv)state.serv={};if(!state.jor)state.jor={};if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};changed=true;}
+  try{const e=JSON.parse(localStorage.getItem(CAL_ESP));if(e&&Array.isArray(e.list)&&e.list.length&&(e._rev||0)>(espData._rev||0)){espData=e;CAL_TYPES.ESP.n=espData.list.length;changed=true;}}catch(x){}
+  if(changed&&!sheetOpen())render();}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncFromStorage();});
+window.addEventListener("focus",syncFromStorage);window.addEventListener("pageshow",syncFromStorage);
+window.addEventListener("storage",ev=>{if(ev.key===STORE||ev.key===CAL_ESP)syncFromStorage();});
 /* ===== Copias automaticas en IndexedDB (sobreviven si se pierde/pisa localStorage) ===== */
 const SNAP_KEEP=14;
 function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open("embcalc_snap",1);r.onupgradeneeded=()=>{r.result.createObjectStore("snap");};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});}
 async function idbPut(k,v){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction("snap","readwrite");t.objectStore("snap").put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
-async function idbAllSnaps(){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction("snap","readonly");const s=t.objectStore("snap");const ks=s.getAllKeys(),vs=s.getAll();t.oncomplete=()=>{const o=[];ks.result.forEach((k,i)=>{if(String(k).startsWith("auto-"))o.push({k:k,v:vs.result[i]});});o.sort((a,b)=>a.k<b.k?1:-1);res(o);};t.onerror=()=>rej(t.error);});}
+async function idbAllSnaps(){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction("snap","readonly");const s=t.objectStore("snap");const ks=s.getAllKeys(),vs=s.getAll();t.oncomplete=()=>{const o=[];ks.result.forEach((k,i)=>{const ks_=String(k);if((ks_.startsWith("auto-")||ks_.startsWith("pre-")||ks_.startsWith("hr-"))&&vs.result[i]&&vs.result[i].state)o.push({k:ks_,v:vs.result[i]});});o.sort((a,b)=>(b.v.ts||0)-(a.v.ts||0));res(o);};t.onerror=()=>rej(t.error);});}
 async function idbDel(k){const db=await idb();return new Promise((res)=>{const t=db.transaction("snap","readwrite");t.objectStore("snap").delete(k);t.oncomplete=()=>res();t.onerror=()=>res();});}
 function snapPayload(){return{ts:Date.now(),state:JSON.parse(JSON.stringify(state)),esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear}};}
 function snapHasData(s){return !!(s&&s.registro&&(s.registro.length>0||Object.keys(s.serv||{}).length>0||Object.keys(s.jor||{}).length>0));}
 let _snapT=null;
 function snapSoon(){clearTimeout(_snapT);_snapT=setTimeout(snapNow,1500);}
-async function snapNow(){try{if(!snapHasData(state))return;const d=new Date().toISOString().slice(0,10);await idbPut("auto-"+d,snapPayload());
-  const all=await idbAllSnaps();for(const x of all.slice(SNAP_KEEP))await idbDel(x.k);}catch(e){}}
+function snapBefore(label){try{if(!snapHasData(state))return;const p=snapPayload();p.label=label||"Antes de borrar";snapPut("pre-"+Date.now(),p);}catch(e){}}
+function snapRaw(old,label){try{const p={ts:Date.now(),state:old,esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear},label:label};snapPut("pre-"+Date.now(),p);}catch(e){}}
+async function snapPut(k,p){try{await idbPut(k,p);const all=await idbAllSnaps();const pre=all.filter(x=>x.k.startsWith("pre-"));for(const x of pre.slice(20))await idbDel(x.k);}catch(e){}}
+async function snapNow(){try{if(!snapHasData(state))return;
+  const now=new Date(),dy=now.toISOString().slice(0,10),hr=now.toISOString().slice(0,13);
+  const all0=await idbAllSnaps();
+  for(const key of ["auto-"+dy,"hr-"+hr]){
+    const prev=all0.find(x=>x.k===key);
+    if(prev){const m=missingIn(prev.v.state,state);if(m.t>=2){const p=prev.v;p.label="Antes de perder datos";await snapPut("pre-"+Date.now()+"-"+key,p);}}
+    await idbPut(key,snapPayload());}
+  const all=await idbAllSnaps();
+  const au=all.filter(x=>x.k.startsWith("auto-"));for(const x of au.slice(SNAP_KEEP))await idbDel(x.k);
+  const hs=all.filter(x=>x.k.startsWith("hr-"));for(const x of hs.slice(24))await idbDel(x.k);}catch(e){}}
 function markBackup(){try{localStorage.setItem("emb_lastbackup",String(Date.now()));}catch(e){}}
 function backupAgeDays(){const t=+localStorage.getItem("emb_lastbackup")||0;if(!t)return null;return Math.floor((Date.now()-t)/86400000);}
-function backupBanner(){if(!state.registro.length)return "";const a=backupAgeDays();if(a!==null&&a<7)return "";
+function backupBanner(){if(!state.registro.length)return "";if(gdOn()&&gd.last&&(Date.now()-gd.last)<3*86400000&&!gd.err)return "";const a=backupAgeDays();if(a!==null&&a<7)return "";
   const txt=a===null?"Todav\u00eda no has hecho ninguna copia de seguridad.":"Hace "+a+" d\u00edas de tu \u00faltima copia de seguridad.";
   return `<div class="card" style="background:var(--emb-soft);border-color:#EFCACA"><div style="font-weight:800;color:var(--emb);font-size:14px">${txt}</div><div class="actions" style="margin-top:8px"><button class="btn primary" id="bb_go">Guardar copia ahora</button></div></div>`;}
+/* ===== Copia en Google Drive (carpeta oculta de la app en el Drive de CADA usuario) ===== */
+const GD_CLIENT_ID="";   /* <-- pega aqui el "ID de cliente" de Google Cloud (ver instrucciones) */
+const GD_SCOPE="https://www.googleapis.com/auth/drive.appdata";
+const GD_API="https://www.googleapis.com/drive/v3",GD_UP="https://www.googleapis.com/upload/drive/v3";
+const gd={tok:null,exp:0,email:localStorage.getItem("emb_gd_mail")||"",busy:false,err:"",last:+localStorage.getItem("emb_gd_last")||0};
+function gdOn(){return !!GD_CLIENT_ID&&localStorage.getItem("emb_gd_on")==="1";}
+function gdLib(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();const s=document.createElement("script");s.src="https://accounts.google.com/gsi/client";s.async=true;s.onload=()=>res();s.onerror=()=>rej(new Error("Sin conexi\u00f3n con Google"));document.head.appendChild(s);});}
+function gdToken(interactive){return new Promise(async(res,rej)=>{
+  if(gd.tok&&Date.now()<gd.exp-60000)return res(gd.tok);
+  try{await gdLib();}catch(e){return rej(e);}
+  const tc=google.accounts.oauth2.initTokenClient({client_id:GD_CLIENT_ID,scope:GD_SCOPE,
+    callback:r=>{if(r&&r.access_token){gd.tok=r.access_token;gd.exp=Date.now()+(+r.expires_in||3600)*1000;res(gd.tok);}else rej(new Error("Reconecta con Google"));},
+    error_callback:e=>rej(new Error("Reconecta con Google"))});
+  try{tc.requestAccessToken({prompt:interactive?"":"none"});}catch(e){rej(e);}});}
+async function gdFetch(url,opt){const tok=await gdToken(false);opt=opt||{};opt.headers=Object.assign({Authorization:"Bearer "+tok},opt.headers||{});
+  const r=await fetch(url,opt);if(r.status===401){gd.tok=null;throw new Error("Reconecta con Google");}if(!r.ok)throw new Error("Drive "+r.status);return r;}
+async function gdList(){const r=await gdFetch(GD_API+"/files?spaces=appDataFolder&pageSize=100&fields="+encodeURIComponent("files(id,name,modifiedTime,size)")+"&orderBy="+encodeURIComponent("modifiedTime desc"));return (await r.json()).files||[];}
+async function gdGet(id){return (await gdFetch(GD_API+"/files/"+id+"?alt=media")).json();}
+async function gdDelete(id){await gdFetch(GD_API+"/files/"+id,{method:"DELETE"});}
+async function gdUpload(name,obj,id){const b="emb"+Date.now()+Math.floor(Math.random()*1e6);const meta=id?{name:name}:{name:name,parents:["appDataFolder"]};
+  const body="--"+b+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify(meta)+"\r\n--"+b+"\r\nContent-Type: application/json\r\n\r\n"+JSON.stringify(obj)+"\r\n--"+b+"--";
+  const r=await gdFetch((id?GD_UP+"/files/"+id:GD_UP+"/files")+"?uploadType=multipart&fields=id,name",{method:id?"PATCH":"POST",headers:{"Content-Type":"multipart/related; boundary="+b},body:body});return r.json();}
+function gdPayload(){return{app:"turnoscalc",v:APP_VER,ts:Date.now(),data:Object.assign({},state,{esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear}})};}
+function gdSplit(d){const o=Object.assign({},d);const esp=o.esp,cfg=o.cfg;delete o.esp;delete o.cfg;return{state:o,esp:esp,cfg:cfg};}
+async function gdPush(force){
+  if(!gdOn()||gd.busy)return;if(!snapHasData(state))return;
+  gd.busy=true;gd.err="";
+  try{
+    const files=await gdList();const lat=files.find(f=>f.name==="turnoscalc-latest.json");
+    if(lat&&!force){const rem=await gdGet(lat.id);const rs=rem&&rem.data;
+      if(rs){const m=missingIn(rs,state);if(m.t>=3||m.s>=2){gd.busy=false;gdConflict(rem,m);return;}}}
+    if(lat&&force){const rem=await gdGet(lat.id);const pv=files.find(f=>f.name==="turnoscalc-prev.json");await gdUpload("turnoscalc-prev.json",rem,pv&&pv.id);}
+    const pl=gdPayload();await gdUpload("turnoscalc-latest.json",pl,lat&&lat.id);
+    const dn="turnoscalc-"+new Date().toISOString().slice(0,10)+".json";const dl=files.find(f=>f.name===dn);await gdUpload(dn,pl,dl&&dl.id);
+    const names=new Set(files.filter(f=>/^turnoscalc-\d{4}-\d{2}-\d{2}\.json$/.test(f.name)).map(f=>f.name));names.add(dn);
+    const old=[...names].sort().reverse().slice(14);for(const nm of old){const f=files.find(x=>x.name===nm);if(f)await gdDelete(f.id);}
+    gd.last=Date.now();try{localStorage.setItem("emb_gd_last",String(gd.last));}catch(e){}
+  }catch(e){gd.err=e.message||"Error";}
+  gd.busy=false;fillGd();}
+function gdFmt(ts){const d=new Date(ts);return d.toLocaleDateString("es-ES")+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});}
+function gdConflict(rem,m){const parts=[];if(m.d)parts.push(m.d+" d\u00eda"+(m.d===1?"":"s"));if(m.s)parts.push(m.s+" servicio"+(m.s===1?"":"s"));if(m.j)parts.push(m.j+" jornada"+(m.j===1?"":"s"));
+  modal(`<h2 style="margin:4px 0 6px;font-size:17px">En Drive hay datos que aqu\u00ed faltan</h2><p class="hint" style="margin:0 0 10px">La copia de Drive (${gdFmt(rem.ts)}) tiene <b>${parts.join(", ")}</b> que este m\u00f3vil no tiene. No la sobrescribo sin preguntarte.</p>`+
+   `<div class="actions" style="flex-direction:column;gap:6px"><button class="btn primary" id="gc_rec">Recuperar lo que falta</button><button class="btn ghost" id="gc_ovr">Sobrescribir Drive con lo de este m\u00f3vil</button><button class="btn ghost" id="gc_no">Cancelar</button></div>`);
+  document.getElementById("gc_no").onclick=cerrarModal;
+  document.getElementById("gc_rec").onclick=()=>{snapBefore("Antes de recuperar desde Drive");const n=mergeMissing(state,rem.data);save(true);cerrarModal();render();toast("Recuperados "+n+" elementos");gdPush();};
+  document.getElementById("gc_ovr").onclick=()=>{cerrarModal();gdPush(true);};}
+async function gdSync(){if(!gdOn()||gd.busy)return;
+  try{if(!snapHasData(state)){const files=await gdList();const lat=files.find(f=>f.name==="turnoscalc-latest.json");
+      if(lat){const rem=await gdGet(lat.id);const rs=rem&&rem.data;if(rs&&snapHasData(rs)){const c=cnt(rs);
+        modal(`<h2 style="margin:4px 0 6px;font-size:17px">Encontr\u00e9 tu copia en Drive</h2><p class="hint" style="margin:0 0 10px">Hay una copia del <b>${gdFmt(rem.ts)}</b> con <b>${c.d} d\u00edas</b>, ${c.s} servicios y ${c.j} jornadas. \u00bfRestaurarla en este m\u00f3vil?</p><div class="actions"><button class="btn ghost" id="gs_no">Ahora no</button><button class="btn primary" id="gs_si">Restaurar</button></div>`);
+        document.getElementById("gs_no").onclick=cerrarModal;
+        document.getElementById("gs_si").onclick=()=>{const sp=gdSplit(rem.data);applySnap({state:sp.state,esp:sp.esp,cfg:sp.cfg});cerrarModal();gd.last=Date.now();fillGd();};return;}}
+      return;}
+  }catch(e){gd.err=e.message||"Error";fillGd();return;}
+  await gdPush();}
+let _gdT=null;function gdSoon(){if(!gdOn())return;clearTimeout(_gdT);_gdT=setTimeout(()=>{if(gd.tok&&Date.now()<gd.exp-60000)gdPush();},20000);}
+async function gdRestoreUI(){try{const files=(await gdList()).filter(f=>/^turnoscalc-(latest|prev|\d{4}-\d{2}-\d{2})\.json$/.test(f.name));
+  if(!files.length){modal(`<h2 style="margin:4px 0 6px;font-size:17px">Copias en Drive</h2><p class="hint">Todav\u00eda no hay copias.</p><div class="actions"><button class="btn ghost" id="gr_x">Cerrar</button></div>`);document.getElementById("gr_x").onclick=cerrarModal;return;}
+  modal(`<h2 style="margin:4px 0 6px;font-size:17px">Copias en Drive</h2><p class="hint" style="margin:0 0 8px">Toca una para ver c\u00f3mo recuperarla.</p>`+files.map((f,i)=>`<button class="btn ghost" data-gr="${i}" style="width:100%;margin-bottom:6px;text-align:left"><b>${f.name.replace("turnoscalc-","").replace(".json","")}</b><br><small>${gdFmt(f.modifiedTime)}</small></button>`).join("")+`<div class="actions"><button class="btn ghost" id="gr_x">Cerrar</button></div>`);
+  document.getElementById("gr_x").onclick=cerrarModal;
+  document.querySelectorAll("[data-gr]").forEach(b=>b.onclick=async()=>{try{const rem=await gdGet(files[+b.dataset.gr].id);const c=cnt(rem.data);
+    modal(`<h2 style="margin:4px 0 6px;font-size:17px">Copia ${files[+b.dataset.gr].name.replace("turnoscalc-","").replace(".json","")}</h2><p class="hint" style="margin:0 0 10px">${c.d} d\u00edas, ${c.s} servicios, ${c.j} jornadas.</p><div class="actions" style="flex-direction:column;gap:6px"><button class="btn primary" id="gx_m">Recuperar lo que falta (no toca lo actual)</button><button class="btn ghost" id="gx_r">Reemplazar todo por esta copia</button><button class="btn ghost" id="gx_n">Cancelar</button></div>`);
+    document.getElementById("gx_n").onclick=cerrarModal;
+    document.getElementById("gx_m").onclick=()=>{snapBefore("Antes de recuperar desde Drive");const n=mergeMissing(state,rem.data);save(true);cerrarModal();render();toast("Recuperados "+n+" elementos");};
+    document.getElementById("gx_r").onclick=()=>{snapBefore("Antes de restaurar desde Drive");const sp=gdSplit(rem.data);applySnap({state:sp.state,esp:sp.esp,cfg:sp.cfg});cerrarModal();};
+  }catch(e){toast(e.message||"Error");}});}catch(e){toast(e.message||"Error al leer Drive");}}
+async function gdConnect(){try{await gdToken(true);
+  try{const r=await gdFetch(GD_API+"/about?fields=user(emailAddress)");const u=await r.json();gd.email=(u.user&&u.user.emailAddress)||"";localStorage.setItem("emb_gd_mail",gd.email);}catch(e){}
+  localStorage.setItem("emb_gd_on","1");gd.err="";fillGd();await gdSync();fillGd();}catch(e){gd.err=e.message||"No se pudo conectar";fillGd();try{toast("No se pudo conectar con Google");}catch(x){}}}
+function gdDisconnect(){try{localStorage.removeItem("emb_gd_on");localStorage.removeItem("emb_gd_mail");}catch(e){}gd.tok=null;gd.email="";gd.err="";fillGd();toast("Desconectado de Drive (tus copias siguen en tu Drive)");}
+function fillGd(){const el=document.getElementById("gd_card");if(!el)return;
+  if(!GD_CLIENT_ID){el.innerHTML="";return;}
+  if(!gdOn()){el.innerHTML=`<div class="card"><div style="font-weight:800;font-size:14px">Copia en Google Drive</div><div class="hint" style="margin:4px 0 8px">Tus datos se guardan solos en una carpeta <b>privada de tu propio Drive</b>. Nadie m\u00e1s puede verlos. Si pierdes o cambias de m\u00f3vil, los recuperas.</div>${gd.err?`<div class="hint" style="color:var(--emb);font-weight:700;margin:0 0 6px">${gd.err}</div>`:""}<div class="actions" style="margin-top:0"><button class="btn primary" id="gd_con">Conectar con Google</button></div></div>`;
+    const c=document.getElementById("gd_con");if(c)c.onclick=gdConnect;return;}
+  const age=gd.last?Math.floor((Date.now()-gd.last)/60000):null;const ok=!gd.err&&age!==null;
+  const when=age===null?"a\u00fan no":(age<1?"ahora mismo":(age<60?"hace "+age+" min":(age<1440?"hace "+Math.floor(age/60)+" h":"hace "+Math.floor(age/1440)+" d")));
+  el.innerHTML=`<div class="card" style="background:${gd.err?"var(--emb-soft)":"var(--dieta-soft)"};border-color:${gd.err?"#EFCACA":"#BFD8B6"}"><div style="font-weight:800;font-size:14px;color:${gd.err?"var(--emb)":"var(--dieta)"}">${gd.err?"Drive: "+gd.err:"Copia en Drive activa"}</div>`+
+   `<div class="hint" style="margin:4px 0 8px">${gd.email?gd.email+" &middot; ":""}\u00daltima copia: <b>${when}</b></div>`+
+   `<div class="actions" style="margin-top:0;flex-wrap:wrap"><button class="btn primary" id="gd_now">${gd.err?"Reconectar":"Guardar ahora"}</button><button class="btn ghost" id="gd_res">Restaurar desde Drive</button><button class="btn ghost" id="gd_off">Desconectar</button></div></div>`;
+  document.getElementById("gd_now").onclick=async()=>{if(gd.err){try{await gdToken(true);gd.err="";}catch(e){gd.err=e.message;fillGd();return;}}await gdSync();fillGd();};
+  document.getElementById("gd_res").onclick=gdRestoreUI;document.getElementById("gd_off").onclick=gdDisconnect;}
+async function checkIntegrity(){try{
+  if(!state.registro.length&&!Object.keys(state.serv||{}).length)return;if(document.getElementById("mdlx"))return;
+  const all=await idbAllSnaps();const refs=all.filter(x=>!x.k.startsWith("pre-")||/perder|Bloqueado/.test(x.v.label||""));
+  let best=null,bm=null;
+  for(const r of refs){if(!r.k.startsWith("pre-")&&r.v.ts>Date.now()-600000)continue;
+    const m=missingIn(r.v.state,state);if(m.t>=3||m.s>=2){if(!best||m.t>bm.t){best=r;bm=m;}}}
+  if(!best)return;  const dt=new Date(best.v.ts),when=dt.toLocaleDateString("es-ES")+" "+dt.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+  const parts=[];if(bm.d)parts.push(bm.d+" d\u00eda"+(bm.d===1?"":"s"));if(bm.s)parts.push(bm.s+" servicio"+(bm.s===1?"":"s"));if(bm.j)parts.push(bm.j+" jornada"+(bm.j===1?"":"s"));
+  modal(`<h2 style="margin:4px 0 6px;font-size:17px">Faltan datos</h2><p class="hint" style="margin:0 0 10px">Comparando con la copia del <b>${when}</b> faltan <b>${parts.join(", ")}</b>. Si no los has borrado t\u00fa, recup\u00e9ralos: <b>no toca nada de lo que has hecho despu\u00e9s</b>.</p><div class="actions"><button class="btn ghost" id="ig_no">Los borr\u00e9 yo</button><button class="btn primary" id="ig_si">Recuperar lo que falta</button></div>`);
+  document.getElementById("ig_no").onclick=()=>{const t=Date.now();if(!state._del)state._del={};missingKeys(best.v.state,state).forEach(k=>{state._del[k]=t;});save(true);cerrarModal();toast("Entendido, no volver\u00e9 a avisar de esto");};
+  document.getElementById("ig_si").onclick=()=>{snapBefore("Antes de recuperar datos");const n=mergeMissing(state,best.v.state);save(true);cerrarModal();render();toast("Recuperados "+n+" elementos");};
+}catch(e){}}
 async function checkRecovery(){try{if(snapHasData(state))return;const all=await idbAllSnaps();const good=all.find(x=>snapHasData(x.v.state));if(!good)return;
   const n=(good.v.state.registro||[]).length;const f=new Date(good.v.ts).toLocaleDateString("es-ES");
   modal(`<h2 style="margin:4px 0 6px;font-size:17px">Encontr\u00e9 una copia autom\u00e1tica</h2><p class="hint" style="margin:0 0 10px">La app est\u00e1 vac\u00eda, pero hay una copia del <b>${f}</b> con <b>${n} d\u00eda${n===1?"":"s"}</b>. \u00bfRestaurarla?</p><div class="actions"><button class="btn ghost" id="rc_no">No</button><button class="btn primary" id="rc_si">Restaurar</button></div>`);
   document.getElementById("rc_no").onclick=cerrarModal;document.getElementById("rc_si").onclick=()=>{applySnap(good.v);cerrarModal();};}catch(e){}}
-function applySnap(p){state=p.state;if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};if(p.esp&&Array.isArray(p.esp.list)){espData=p.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}
+function applySnap(p){const _prev=state;state=p.state;tombstoneDiff(_prev,state);if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};if(p.esp&&Array.isArray(p.esp.list)){espData=p.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}
   if(p.cfg&&CAL_TYPES[p.cfg.type]){calType=p.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,p.cfg.grp||1));calOff=(p.cfg.off===1)?1:0;if(CAL_YEARS.includes(+p.cfg.year))calYear=+p.cfg.year;calSave();}
-  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}render();toast("Copia restaurada");}
+  save(true);render();toast("Copia restaurada");}
 async function openSnaps(){const all=await idbAllSnaps();
   if(!all.length){modal(`<h2 style="margin:4px 0 6px;font-size:17px">Copias autom\u00e1ticas</h2><p class="hint">Todav\u00eda no hay ninguna. Se crean solas cada d\u00eda que usas la app.</p><div class="actions"><button class="btn ghost" id="sn_x">Cerrar</button></div>`);document.getElementById("sn_x").onclick=cerrarModal;return;}
   modal(`<h2 style="margin:4px 0 6px;font-size:17px">Copias autom\u00e1ticas</h2><p class="hint" style="margin:0 0 8px">Guardadas dentro del m\u00f3vil, una por d\u00eda (\u00faltimos ${SNAP_KEEP}). Toca para restaurar.</p>`+
-   all.map((x,i)=>{const n=(x.v.state.registro||[]).length;return `<button class="btn ghost" data-sn="${i}" style="width:100%;margin-bottom:6px;text-align:left">${x.k.slice(5)} &middot; ${n} d\u00eda${n===1?"":"s"}</button>`;}).join("")+
+   all.map((x,i)=>{const c=cnt(x.v.state);const dt=new Date(x.v.ts);const when=dt.toLocaleDateString("es-ES")+" "+dt.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});const lbl=x.k.startsWith("pre-")?(x.v.label||"Antes de un cambio"):(x.k.startsWith("hr-")?"Copia horaria":"Copia diaria");return `<button class="btn ghost" data-sn="${i}" style="width:100%;margin-bottom:6px;text-align:left"><b>${lbl}</b><br><small>${when} &middot; ${c.d} d\u00edas &middot; ${c.s} servicios &middot; ${c.j} jornadas</small></button>`;}).join("")+
    `<div class="actions"><button class="btn ghost" id="sn_x">Cerrar</button></div>`);
   document.getElementById("sn_x").onclick=cerrarModal;
-  document.querySelectorAll("[data-sn]").forEach(b=>b.onclick=()=>{const p=all[+b.dataset.sn].v;localStorage.setItem("emb_calc_undo",JSON.stringify({state:state,esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear},ts:Date.now()}));applySnap(p);cerrarModal();});}
+  document.querySelectorAll("[data-sn]").forEach(b=>b.onclick=()=>{const p=all[+b.dataset.sn].v;snapBefore("Antes de restaurar una copia");localStorage.setItem("emb_calc_undo",JSON.stringify({state:state,esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear},ts:Date.now()}));applySnap(p);cerrarModal();});}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function lineasAll(){const ex=Object.keys(state.serv||{}).map(k=>k.split("|")[0]);return [...new Set([...Object.keys(CAT),...ex])].sort();}
 Object.defineProperty(window,"LINEAS",{get:lineasAll});
@@ -315,7 +502,7 @@ function fmtSaldo(d){d=Math.round(d*100)/100;return (d>=0?"+":"−")+Math.abs(d)
 function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("Copiado")).catch(()=>fallbackCopy(t));}else fallbackCopy(t);}
 function fallbackCopy(t){const ta=document.getElementById("exp_t");if(ta){ta.select();ta.setSelectionRange(0,99999);try{document.execCommand("copy");toast("Copiado");}catch(e){toast("Copia manual");}}}
 function bindBackup(){const e=document.getElementById("b_exp");if(!e)return;e.onclick=exportData;document.getElementById("b_imp").onclick=importData;
-  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;const cy=document.getElementById("carry_go");if(cy)cy.onclick=openCarry;const ub=document.getElementById("b_undo");if(ub)ub.onclick=undoImport;const sb=document.getElementById("b_snaps");if(sb)sb.onclick=openSnaps;const bg=document.getElementById("bb_go");if(bg)bg.onclick=()=>{exportData();};}
+  const a=document.getElementById("adj_go");if(a)a.onclick=openAjuste;const cy=document.getElementById("carry_go");if(cy)cy.onclick=openCarry;const ub=document.getElementById("b_undo");if(ub)ub.onclick=undoImport;const sb=document.getElementById("b_snaps");if(sb)sb.onclick=openSnaps;const bg=document.getElementById("bb_go");if(bg)bg.onclick=()=>{exportData();};fillProt();fillGd();}
 function openCarry(){const act=(state.carry&&state.carry[calYear]!=null)?state.carry[calYear]:null;modal(`<h2 style="margin:4px 0 6px;font-size:17px">Horas que vienen de ${calYear-1}</h2><p class="hint" style="margin:0 0 8px">Solo informativo, para llevar el control de un a\u00f1o a otro. No afecta a los c\u00e1lculos.</p><div class="fields"><div class="field"><label>Horas (a\u00f1o ${calYear-1})</label><input id="cy_v" type="text" inputmode="decimal" value="${act!=null?String(act).replace(".",","):""}" placeholder="ej. +12,50 o -8"></div></div><div class="actions"><button class="btn ghost" id="cy_no">Cancelar</button><button class="btn ghost" id="cy_rs">Borrar</button><button class="btn primary" id="cy_ok">Guardar</button></div>`);document.getElementById("cy_no").onclick=cerrarModal;document.getElementById("cy_rs").onclick=()=>{if(state.carry)delete state.carry[calYear];save();cerrarModal();render();toast("Borrado");};document.getElementById("cy_ok").onclick=()=>{const v=parseFloat((val("cy_v")||"").replace(",","."));if(isNaN(v)){toast("Pon un n\u00famero");return;}if(!state.carry)state.carry={};state.carry[calYear]=Math.round(v*100)/100;save();cerrarModal();render();toast("Guardado");};}
 function modal(html){const old=document.getElementById("mdlx");if(old)old.remove();const m=document.createElement("div");m.id="mdlx";
   m.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;";
@@ -402,7 +589,7 @@ function importData(){
     doImport(d);
   };
 }
-function undoImport(){let u;try{u=JSON.parse(localStorage.getItem("emb_calc_undo"));}catch(e){}if(!u||!u.state){toast("No hay importaci\u00f3n que deshacer");return;}const nn=(u.state.registro||[]).length;modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfDeshacer la \u00faltima importaci\u00f3n?</h2><p class="hint" style="margin:0 0 10px">Vuelve a como estaba justo antes de importar (${nn} d\u00eda${nn===1?"":"s"}).</p><div class="actions"><button class="btn ghost" id="un_no">Cancelar</button><button class="btn primary" id="un_si">S\u00ed, deshacer</button></div>`);document.getElementById("un_no").onclick=cerrarModal;document.getElementById("un_si").onclick=()=>{state=u.state;if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};if(u.esp&&Array.isArray(u.esp.list)){espData=u.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(u.cfg&&CAL_TYPES[u.cfg.type]){calType=u.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,u.cfg.grp||1));calOff=(u.cfg.off===1)?1:0;if(CAL_YEARS.includes(+u.cfg.year))calYear=+u.cfg.year;calSave();}localStorage.removeItem("emb_calc_undo");save();cerrarModal();render();toast("Importaci\u00f3n deshecha");};}
+function undoImport(){let u;try{u=JSON.parse(localStorage.getItem("emb_calc_undo"));}catch(e){}if(!u||!u.state){toast("No hay importaci\u00f3n que deshacer");return;}const nn=(u.state.registro||[]).length;modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfDeshacer la \u00faltima importaci\u00f3n?</h2><p class="hint" style="margin:0 0 10px">Vuelve a como estaba justo antes de importar (${nn} d\u00eda${nn===1?"":"s"}).</p><div class="actions"><button class="btn ghost" id="un_no">Cancelar</button><button class="btn primary" id="un_si">S\u00ed, deshacer</button></div>`);document.getElementById("un_no").onclick=cerrarModal;document.getElementById("un_si").onclick=()=>{state=u.state;if(!state.carry)state.carry={};if(!state.ovr)state.ovr={};if(u.esp&&Array.isArray(u.esp.list)){espData=u.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(u.cfg&&CAL_TYPES[u.cfg.type]){calType=u.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,u.cfg.grp||1));calOff=(u.cfg.off===1)?1:0;if(CAL_YEARS.includes(+u.cfg.year))calYear=+u.cfg.year;calSave();}localStorage.removeItem("emb_calc_undo");save(true);cerrarModal();render();toast("Importaci\u00f3n deshecha");};}
 function doImport(d){
   const n=(d.registro||[]).length;
   openSheet(`<div class="grab"></div><h2>¿Reemplazar tus datos?</h2>
@@ -410,8 +597,9 @@ function doImport(d){
    <div class="actions"><button class="btn ghost" id="imp_no">Cancelar</button><button class="btn danger" id="imp_si">Sí, reemplazar</button></div>`);
   document.getElementById("imp_no").onclick=closeSheet;
   document.getElementById("imp_si").onclick=()=>{
+    snapBefore("Antes de importar una copia");
     try{localStorage.setItem("emb_calc_undo",JSON.stringify({state:state,esp:espData,cfg:{type:calType,grp:calGrp,off:calOff,year:calYear},ts:Date.now()}));}catch(e){}
-    state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{},adj:d.adj||0,carry:d.carry||{},ovr:d.ovr||{}};if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save();closeSheet();render();toast("Datos importados");
+    const _prev=state;state={registro:d.registro||[],serv:d.serv||{},jor:d.jor||{},adj:d.adj||0,carry:d.carry||{},ovr:d.ovr||{},_del:d._del||{}};tombstoneDiff(_prev,state);if(d.esp&&Array.isArray(d.esp.list)){espData=d.esp;CAL_TYPES.ESP.n=espData.list.length;espSave();}if(d.cfg&&CAL_TYPES[d.cfg.type]){calType=d.cfg.type;calGrp=Math.max(1,Math.min(CAL_TYPES[calType].n,d.cfg.grp||1));calOff=(d.cfg.off===1)?1:0;if(CAL_YEARS.includes(+d.cfg.year))calYear=+d.cfg.year;const _av=CAL_TYPES[calType].months;if(!_av.includes(calMonth))calMonth=_av.includes(calToday.getMonth())?calToday.getMonth():_av[0];calSave();}save(true);closeSheet();render();toast("Datos importados");
   };
 }
 function render(){
@@ -424,8 +612,9 @@ function render(){
   if(tab==="resumen"){fab.style.display="none";v.innerHTML=viewResumen();bindBackup();}
   else if(tab==="dias"){fab.style.display="";fab.textContent="+ Añadir día";v.innerHTML=viewDias();document.querySelectorAll("[data-eid]").forEach(el=>el.onclick=()=>editDia(el.dataset.eid));}
   else{fab.style.display="";fab.textContent=isGrupo(browseL)?"+ Nueva jornada":"+ Nuevo servicio";v.innerHTML=viewServicios();bindServicios();}
+  bindHints();
 }
-function viewResumen(){const t=periodTotals();const tot=totalAcum();return backupBanner()+`<div class="card"><div class="bigrow"><span class="k">Saldo TOTAL acumulado<br><span class="hint" style="font-weight:600">todos los per\u00edodos</span></span><span class="v" style="color:${tot>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(tot)}</span></div><div class="bigrow"><span class="k">Vienen del a\u00f1o anterior<br><span class="hint" style="font-weight:600">${calYear-1} &middot; solo informativo</span></span><span class="v" style="color:var(--hint)">${(state.carry&&state.carry[calYear]!=null)?fmtSaldo(state.carry[calYear]):"\u2014"}</span></div><div class="actions" style="margin-top:2px"><button class="btn ghost" id="carry_go">A\u00f1o anterior</button><button class="btn ghost" id="adj_go">Ajustar saldo total</button></div></div><div class="card">
+function viewResumen(){const t=periodTotals();const tot=totalAcum();return backupBanner()+periodHint()+`<div id="prot_card"></div><div id="gd_card"></div><div class="card"><div class="bigrow"><span class="k">Saldo TOTAL acumulado<br><span class="hint" style="font-weight:600">todos los per\u00edodos</span></span><span class="v" style="color:${tot>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(tot)}</span></div><div class="bigrow"><span class="k">Vienen del a\u00f1o anterior<br><span class="hint" style="font-weight:600">${calYear-1} &middot; solo informativo</span></span><span class="v" style="color:var(--hint)">${(state.carry&&state.carry[calYear]!=null)?fmtSaldo(state.carry[calYear]):"\u2014"}</span></div><div class="actions" style="margin-top:2px"><button class="btn ghost" id="carry_go">A\u00f1o anterior</button><button class="btn ghost" id="adj_go">Ajustar saldo total</button></div></div><div class="card">
   <div class="bigrow"><span class="k">Horas trabajadas</span><span class="v">${hhmm(t.horas)}</span></div>
   <div class="bigrow"><span class="k">Horas acumuladas (saldo)</span><span class="v" style="color:${t.acum>=0?'var(--dieta)':'var(--emb)'}">${fmtSaldo(t.acum)}</span></div>
   <div class="bigrow"><span class="k">Franqueos trabajados<br><span class="hint" style="font-weight:600">descansos que has trabajado</span></span><span class="v" style="color:var(--noct)">${t.nfr}</span></div>
@@ -445,7 +634,7 @@ function viewResumen(){const t=periodTotals();const tot=totalAcum();return backu
   <div class="actions" style="margin-top:0"><button class="btn ghost" id="b_exp">Exportar</button><button class="btn primary" id="b_imp">Importar</button></div><div class="actions" style="margin-top:6px"><button class="btn ghost" id="b_snaps">Copias autom\u00e1ticas del m\u00f3vil</button></div>${localStorage.getItem("emb_calc_undo")?`<div class="actions" style="margin-top:6px"><button class="btn ghost" id="b_undo" style="color:var(--emb)">Deshacer importaci\u00f3n</button></div>`:""}</div>`;}
 function viewDias(){
   const list=state.registro.filter(e=>inPeriod(e.fecha)).sort((a,b)=>a.fecha<b.fecha?-1:1);
-  if(!list.length)return `<div class="empty">No hay días en este período.<br>Pulsa “+ Añadir día”.</div>`;
+  if(!list.length)return periodHint()+`<div class="empty">No hay d\u00edas en este per\u00edodo.<br>Pulsa \u201c+ A\u00f1adir d\u00eda\u201d.</div>`;
   let h="<div class='card'>";
   for(const e of list){const _k=espDia(e);if(_k){const dt2=new Date(e.fecha+"T12:00:00"),dn2=["DO","LU","MA","MI","JU","VI","SA"][dt2.getDay()];h+=`<div class="diarow" data-ed="${e.id}"><div class="dleft"><div class="dfecha">${dn2} ${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</div><div class="dlab" style="color:${ESPD[_k].cor};font-weight:800">${ESPD[_k].lbl}</div></div><div class="dright"><div class="dhoras" style="color:${ESPD[_k].resta?"var(--emb)":"var(--ink)"}">${ESPD[_k].resta?fmtSaldo(-jorStd()):(ESPD[_k].jornada?hhmm(jorStd()):"")}</div></div></div>`;continue;}const c=diaCalc(diaTramos(e));const d=e.dietas||{};
     const dt=new Date(e.fecha+"T12:00:00"),dn=["DO","LU","MA","MI","JU","VI","SA"][dt.getDay()];
@@ -488,14 +677,14 @@ function editDia(id,fecha){
   fTipo.onchange=()=>{if(ESPD[fTipo.value]){E.esp=fTipo.value;E.fod=(fTipo.value==="FOD");E.dietas={desayuno:false,comida:false,cena:false};manualDiet=true;E.fnr=false;renderBloques();return;}E.esp=null;E.fod=false;E.tipo=fTipo.value;E.bloques.forEach(b=>{if(!b.man){const ss=servsFor(b.linea,E.tipo);if(!ss.includes(b.servicio))b.servicio=ss[0]||"";}});renderBloques();};
   document.getElementById("addb").onclick=()=>{E.bloques.push({linea:E.bloques[E.bloques.length-1].linea,servicio:"",turno:"1",man:null});const b=E.bloques[E.bloques.length-1];const ss=servsFor(b.linea,E.tipo);b.servicio=ss[0]||"";const sd=catSd(b.linea,E.tipo,b.servicio);b.turno=sd&&sd.p?"P":(sd&&sd.t1?"1":"2");renderBloques();};
   document.getElementById("e_cancel").onclick=closeSheet;
-  if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfBorrar este d\u00eda?</h2><p class="hint" style="margin:0 0 10px">${E.fecha}. No se puede deshacer.</p><div class="actions"><button class="btn ghost" id="del_no">Cancelar</button><button class="btn danger" id="del_si">S\u00ed, borrar</button></div>`);document.getElementById("del_no").onclick=cerrarModal;document.getElementById("del_si").onclick=()=>{state.registro=state.registro.filter(x=>x.id!==E.id);save();cerrarModal();closeSheet();render();toast("D\u00eda borrado");};};
+  if(document.getElementById("e_del"))document.getElementById("e_del").onclick=()=>{modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfBorrar este d\u00eda?</h2><p class="hint" style="margin:0 0 10px">${E.fecha}. No se puede deshacer.</p><div class="actions"><button class="btn ghost" id="del_no">Cancelar</button><button class="btn danger" id="del_si">S\u00ed, borrar</button></div>`);document.getElementById("del_no").onclick=cerrarModal;document.getElementById("del_si").onclick=()=>{snapBefore("Antes de borrar el d\u00eda "+E.fecha);delMark("d",E.id);state.registro=state.registro.filter(x=>x.id!==E.id);save();cerrarModal();closeSheet();render();toast("D\u00eda borrado");};};
   document.getElementById("e_save").onclick=()=>{
     E.fecha=fFecha.value;if(!E.fecha){toast("Pon la fecha");return;}
     E.nota=(val("e_nota")||"").trim();
     if(espDia(E)){const k=espDia(E);E.esp=k;E.fod=(k==="FOD");E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab=ESPD[k].lbl;}
     else{const tr=diaTramos(E);if(!tr.length){if(E.nota){E.bloques=[];E.dietas={desayuno:false,comida:false,cena:false};E.lab="Nota";}else{toast("Falta el horario de alg\u00fan servicio o pon un comentario");return;}}
     else E.dietas={desayuno:chk("e_des"),comida:chk("e_com"),cena:chk("e_cen")};}
-    if(!E.id)E.id=uid();
+    if(!E.id)E.id=uid();E.mt=Date.now();
     const idx=state.registro.findIndex(x=>x.id===E.id);
     if(idx>=0)state.registro[idx]=E;else state.registro.push(E);
     save();if(!inPeriod(E.fecha))period=periodFromDate(E.fecha);closeSheet();render();toast("Guardado");
@@ -672,11 +861,11 @@ function editGrupo(group,name){
   document.getElementById("g_add").onclick=()=>{GTR.push(["","","",""]);renderG();};
   document.getElementById("g_c").onclick=closeSheet;
   document.getElementById("g_ap").onclick=()=>{const tr=GTR.map(t=>[t[0]||"",t[1],t[2],t[3]||""]);if(apuntarDiaTramos(val("g_fecha"),tr,group+" · "+(val("g_n")||""))){closeSheet();render();toast("Apuntado en Días");}};
-  if(document.getElementById("g_del"))document.getElementById("g_del").onclick=()=>{delete state.jor[group][name];save();closeSheet();render();toast("Borrada");};
+  if(document.getElementById("g_del"))document.getElementById("g_del").onclick=()=>{modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfBorrar esta jornada?</h2><p class="hint" style="margin:0 0 10px">${group} \u00b7 ${name}. Podr\u00e1s recuperarla desde <b>Copias autom\u00e1ticas</b> en Resumen.</p><div class="actions"><button class="btn ghost" id="jdel_no">Cancelar</button><button class="btn danger" id="jdel_si">S\u00ed, borrar</button></div>`);document.getElementById("jdel_no").onclick=cerrarModal;document.getElementById("jdel_si").onclick=()=>{snapBefore("Antes de borrar jornada "+group+" \u00b7 "+name);delMark("j",group+"|"+name);delete state.jor[group][name];save();cerrarModal();closeSheet();render();toast("Borrada");};};
   document.getElementById("g_sv").onclick=()=>{
     const nm=val("g_n").trim();if(!nm){toast("Ponle nombre");return;}
     const tr=GTR.filter(t=>t[1]&&t[2]).map(t=>[t[0]||"",t[1],t[2],t[3]||""]);if(!tr.length){toast("Pon al menos un servicio");return;}
-    if(name&&name!==nm&&state.jor[group]&&state.jor[group][name])delete state.jor[group][name];
+    if(name&&name!==nm&&state.jor[group]&&state.jor[group][name]){delMark("j",group+"|"+name);delete state.jor[group][name];}
     state.jor[group]=state.jor[group]||{};state.jor[group][nm]=tr;save();closeSheet();render();toast("Guardada "+nm);
   };
   renderG();
@@ -700,13 +889,13 @@ function editServicio(key){
    <div class="actions">${key&&state.serv[key]?'<button class="btn danger" id="s_del">Borrar</button>':''}<button class="btn ghost" id="s_c">Cancelar</button><button class="btn primary" id="s_sv">Guardar</button></div>`);
   document.getElementById("s_c").onclick=closeSheet;
   document.getElementById("s_ap").onclick=()=>{const L=val("s_l").trim(),T=val("s_t"),S=val("s_s").trim();const sd=state.serv[L+"|"+T+"|"+S]||catSd(L,T,S);if(!sd){toast("Guarda primero el servicio");return;}const trs=turnoTramos(sd,val("s_turno"));if(!trs.length){toast("Ese turno no tiene horario");return;}const tr=trs.map(t=>[L+"/"+S,t[0],t[1]]);if(apuntarDiaTramos(val("s_fecha"),tr,L+" · "+S)){closeSheet();render();toast("Apuntado en Días");}};
-  if(document.getElementById("s_del"))document.getElementById("s_del").onclick=()=>{delete state.serv[key];save();closeSheet();render();toast("Borrado");};
+  if(document.getElementById("s_del"))document.getElementById("s_del").onclick=()=>{modal(`<h2 style="margin:4px 0 6px;font-size:17px">\u00bfBorrar este servicio?</h2><p class="hint" style="margin:0 0 10px">${String(key).replace(/\|/g," \u00b7 ")}. Podr\u00e1s recuperarlo desde <b>Copias autom\u00e1ticas</b> en Resumen.</p><div class="actions"><button class="btn ghost" id="sdel_no">Cancelar</button><button class="btn danger" id="sdel_si">S\u00ed, borrar</button></div>`);document.getElementById("sdel_no").onclick=cerrarModal;document.getElementById("sdel_si").onclick=()=>{snapBefore("Antes de borrar servicio "+String(key).replace(/\|/g," \u00b7 "));delMark("s",key);delete state.serv[key];save();cerrarModal();closeSheet();render();toast("Borrado");};};
   document.getElementById("s_sv").onclick=()=>{
     const L=val("s_l").trim(),T=val("s_t"),S=val("s_s").trim();if(!L||!S){toast("Pon línea y nº");return;}
     const i1=val("s_i1"),f1=val("s_f1"),i2=val("s_i2"),f2=val("s_f2");
     const nsd={p:(i1&&i2)?1:0};if(i1&&f1)nsd.t1=[i1,f1];if(i2&&f2)nsd.t2=[i2,f2];
     if(!nsd.t1&&!nsd.t2){toast("Pon al menos un turno");return;}
-    if(key&&key!==L+"|"+T+"|"+S&&state.serv[key])delete state.serv[key];
+    if(key&&key!==L+"|"+T+"|"+S&&state.serv[key]){delMark("s",key);delete state.serv[key];}
     state.serv[L+"|"+T+"|"+S]=nsd;browseL=L;browseT=T;save();closeSheet();render();toast("Guardado");
   };
 }
@@ -716,6 +905,6 @@ document.getElementById("pnext").onclick=()=>{shiftPeriod(1);render();};
 document.getElementById("fab").onclick=()=>{if(tab==="servicios"){if(isGrupo(browseL))editGrupo(browseL,null);else editServicio(null);}else{if(tab!=="dias"){tab="dias";render();}editDia(null);}};
 render();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
-checkRecovery();snapSoon();
+checkRecovery();snapSoon();setTimeout(checkIntegrity,1500);if(gdOn())setTimeout(()=>{gdToken(false).then(()=>gdSync()).catch(e=>{gd.err=e.message||"Reconecta con Google";fillGd();});},2500);document.addEventListener("visibilitychange",()=>{if(document.hidden&&gdOn()&&gd.tok&&Date.now()<gd.exp-60000)gdPush();});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
 </script></body></html>
