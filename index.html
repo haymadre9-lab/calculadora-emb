@@ -117,7 +117,7 @@ const STORE="emb_calc_2026_v4";
 const NIGHT=[[0,390],[1320,1830]];
 const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const TIPOL={Lab:"Laborable",Sab:"Sábado",Fest:"Festivo"};
-const APP_VER="4.3";
+const APP_VER="4.4";
 let state=load(),tab="calendario",period=currentPeriod();
 
 /* ===== Calendario de turnos (fusion) ===== */
@@ -264,13 +264,14 @@ function lastFecha(){return state.registro.reduce((m,e)=>e.fecha>m?e.fecha:m,"")
 function fmtF(f){return f?f.slice(8,10)+"/"+f.slice(5,7)+"/"+f.slice(0,4):"";}
 function periodHint(){
   const n=state.registro.length;
-  if(n===0)return `<div class="card" style="background:var(--emb-soft);border-color:#EFCACA"><div style="font-weight:800;color:var(--emb);font-size:14px">No hay ning\u00fan d\u00eda guardado en este m\u00f3vil</div><div class="hint" style="margin:4px 0 8px">Si es la primera vez, ignora esto. Si ya usabas la app, restaura tus datos:</div><div class="actions" style="margin-top:0"><button class="btn ghost" id="ph_snaps">Copias autom\u00e1ticas</button><button class="btn primary" id="ph_imp">Importar copia</button></div></div>`;
+  if(n===0)return `<div class="card" style="background:var(--emb-soft);border-color:#EFCACA"><div style="font-weight:800;color:var(--emb);font-size:14px">No hay ning\u00fan d\u00eda guardado en este m\u00f3vil</div><div class="hint" style="margin:4px 0 8px">Si es la primera vez, ignora esto. Si ya usabas la app, restaura tus datos:</div><div class="actions" style="margin-top:0;flex-wrap:wrap">${GD_CLIENT_ID?`<button class="btn primary" id="ph_gd" style="flex:1 1 100%">Recuperar desde Google Drive</button>`:""}<button class="btn ghost" id="ph_snaps">Copias autom\u00e1ticas</button><button class="btn ${GD_CLIENT_ID?"ghost":"primary"}" id="ph_imp">Importar copia</button></div></div>`;
   if(!state.registro.some(e=>inPeriod(e.fecha)))return `<div class="card" style="background:var(--dieta-soft);border-color:#BFD8B6"><div style="font-weight:800;color:var(--dieta);font-size:14px">Tus datos est\u00e1n aqu\u00ed</div><div class="hint" style="margin:4px 0 8px">Este per\u00edodo (${periodLabel(period)}) a\u00fan no tiene d\u00edas, pero la app guarda <b>${n} d\u00eda${n===1?"":"s"}</b> en otros per\u00edodos. El \u00faltimo es el <b>${fmtF(lastFecha())}</b>.</div><div class="actions" style="margin-top:0"><button class="btn primary" id="pj_go">Ir al \u00faltimo per\u00edodo con datos</button></div></div>`;
   return "";}
 function bindHints(){
   const a=document.getElementById("pj_go");if(a)a.onclick=()=>{period=periodFromDate(lastFecha());render();};
   const b=document.getElementById("ph_snaps");if(b)b.onclick=openSnaps;
-  const c=document.getElementById("ph_imp");if(c)c.onclick=()=>importData();}
+  const c=document.getElementById("ph_imp");if(c)c.onclick=()=>importData();
+  const g=document.getElementById("ph_gd");if(g)g.onclick=()=>gdConnect();}
 function cnt(s){s=s||{};return{d:(s.registro||[]).length,s:Object.keys(s.serv||{}).length,j:Object.values(s.jor||{}).reduce((a,g)=>a+Object.keys(g||{}).length,0)};}
 /* ===== Integridad de datos ===== */
 function itemsOf(s){s=s||{};const o=new Set();(s.registro||[]).forEach(e=>o.add("d:"+e.id));Object.keys(s.serv||{}).forEach(k=>o.add("s:"+k));
@@ -401,6 +402,7 @@ async function gdSync(){if(!gdOn()||gd.busy)return;
         modal(`<h2 style="margin:4px 0 6px;font-size:17px">Encontr\u00e9 tu copia en Drive</h2><p class="hint" style="margin:0 0 10px">Hay una copia del <b>${gdFmt(rem.ts)}</b> con <b>${c.d} d\u00edas</b>, ${c.s} servicios y ${c.j} jornadas. \u00bfRestaurarla en este m\u00f3vil?</p><div class="actions"><button class="btn ghost" id="gs_no">Ahora no</button><button class="btn primary" id="gs_si">Restaurar</button></div>`);
         document.getElementById("gs_no").onclick=cerrarModal;
         document.getElementById("gs_si").onclick=()=>{const sp=gdSplit(rem.data);applySnap({state:sp.state,esp:sp.esp,cfg:sp.cfg});cerrarModal();gd.last=Date.now();fillGd();};return;}}
+      try{toast("No hay ninguna copia en tu Drive");}catch(x){}
       return;}
   }catch(e){gd.err=e.message||"Error";fillGd();return;}
   await gdPush();}
